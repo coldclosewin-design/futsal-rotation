@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>멤버 관리</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>⚙️ 멤버 관리</h1>
+
+  <div class="section">
+    <h2>멤버 목록 <span id="memberCount"></span></h2>
+    <ul class="admin-list" id="adminList"></ul>
+    <button class="secondary" id="addBtn">+ 새 멤버 추가</button>
+  </div>
+
+  <div class="section">
+    <h2>저장</h2>
+    <p style="font-size:13px; color:#666; margin:0 0 8px;">
+      [임시 저장]은 이 브라우저에만 반영됩니다.<br>
+      전원에게 영구 반영하려면 [members.json 복사] 후 레포 파일을 덮어쓰고 git push 하세요.
+    </p>
+    <button class="primary" id="saveLocalBtn">이 브라우저에 임시 저장</button>
+    <button class="secondary" id="resetBtn">기본값(members.json)으로 초기화</button>
+    <h2 style="margin-top:16px;">members.json 내용</h2>
+    <textarea class="json-preview" id="jsonPreview" readonly></textarea>
+    <button class="copy" id="copyJsonBtn">📋 JSON 복사</button>
+  </div>
+
+  <div class="link-row">
+    <a href="index.html">← 배정 화면으로</a>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const LS_KEY = "futsal_members_override";
+    let members = [];
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1500);
+    }
+
+    async function loadInitial() {
+      const override = localStorage.getItem(LS_KEY);
+      if (override) {
+        try {
+          const parsed = JSON.parse(override);
+          if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
+            members = parsed.members;
+            return;
+          }
+        } catch (e) { /* fall through */ }
+      }
+      const res = await fetch("members.json", { cache: "no-cache" });
+      const data = await res.json();
+      members = data.members;
+    }
+
+    function render() {
+      const list = document.getElementById("adminList");
+      list.innerHTML = "";
+      document.getElementById("memberCount").textContent = `(${members.length}명)`;
+      members.forEach((m, idx) => {
+        const li = document.createElement("li");
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = m.name;
+        input.addEventListener("input", () => {
+          members[idx].name = input.value;
+          updateJson();
+        });
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "삭제";
+        delBtn.className = "btn-del";
+        delBtn.addEventListener("click", () => {
+          members.splice(idx, 1);
+          render();
+        });
+        li.appendChild(input);
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+      updateJson();
+    }
+
+    function nextId() {
+      const nums = members
+        .map((m) => parseInt(m.id.replace(/\D/g, ""), 10))
+        .filter((n) => !isNaN(n));
+      const max = nums.length ? Math.max(...nums) : 0;
+      return `m${String(max + 1).padStart(2, "0")}`;
+    }
+
+    function updateJson() {
+      const obj = { members };
+      document.getElementById("jsonPreview").value = JSON.stringify(obj, null, 2);
+    }
+
+    document.getElementById("addBtn").addEventListener("click", () => {
+      members.push({ id: nextId(), name: "새 멤버" });
+      render();
+    });
+
+    document.getElementById("saveLocalBtn").addEventListener("click", () => {
+      localStorage.setItem(LS_KEY, JSON.stringify({ members }));
+      showToast("이 브라우저에 저장됨");
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", async () => {
+      if (!confirm("브라우저 저장을 지우고 members.json을 다시 불러올까요?")) return;
+      localStorage.removeItem(LS_KEY);
+      await loadInitial();
+      render();
+      showToast("기본값으로 초기화됨");
+    });
+
+    document.getElementById("copyJsonBtn").addEventListener("click", async () => {
+      const text = document.getElementById("jsonPreview").value;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("JSON 복사됨! members.json에 붙여넣기");
+      } catch (e) {
+        const ta = document.getElementById("jsonPreview");
+        ta.removeAttribute("readonly");
+        ta.select();
+        document.execCommand("copy");
+        ta.setAttribute("readonly", "");
+        showToast("JSON 복사됨");
+      }
+    });
+
+    loadInitial().then(render).catch((e) => alert("로딩 실패: " + e.message));
+  </script>
+</body>
+</html>

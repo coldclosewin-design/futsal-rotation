@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>풋살 배정</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>🥅 풋살 키퍼·휴식 배정</h1>
+
+  <div class="section">
+    <h2>오늘 참가자 선택 (6명 또는 7명)</h2>
+    <div class="member-grid" id="memberGrid"></div>
+    <div class="count-info" id="countInfo">0명 선택</div>
+  </div>
+
+  <div class="section" id="partialSection" style="display:none">
+    <details>
+      <summary style="cursor:pointer; font-weight:600; font-size:15px; color:#444;">
+        ⏱ 중간 이탈/늦참 설정 (선택 안 하면 전원 Q1~Q8 전체 참여)
+      </summary>
+      <div id="partialList" style="margin-top:10px;"></div>
+      <p style="font-size:12px; color:#888; margin:8px 0 0;">
+        조기 퇴장자는 필드 위주 배치(GK·휴식 최소화), 나머지 인원이 더 자주 서게 됩니다.
+      </p>
+    </details>
+  </div>
+
+  <div class="section">
+    <h2>포맷</h2>
+    <div class="format-row">
+      <label><input type="radio" name="format" value="5v5" checked><span>5 vs 5</span></label>
+      <label><input type="radio" name="format" value="6v6"><span>6 vs 6</span></label>
+    </div>
+    <button class="primary" id="generateBtn" disabled>배정표 생성</button>
+  </div>
+
+  <div class="section hidden" id="resultSection">
+    <h2>배정 결과</h2>
+    <table class="result-table" id="resultTable"></table>
+    <div class="summary" id="summary"></div>
+    <div id="warnings" style="margin-top:8px; font-size:13px; color:#b45309;"></div>
+    <button class="copy" id="copyBtn">📋 카톡에 복사</button>
+  </div>
+
+  <div class="link-row">
+    <a href="members-admin.html">⚙️ 멤버 관리</a>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="rotation.js"></script>
+  <script>
+    const LS_KEY = "futsal_members_override";
+    // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
+
+    async function loadMembers() {
+      const override = localStorage.getItem(LS_KEY);
+      if (override) {
+        try {
+          const parsed = JSON.parse(override);
+          if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
+            return parsed.members;
+          }
+        } catch (e) { /* fall through */ }
+      }
+      const res = await fetch("members.json", { cache: "no-cache" });
+      const data = await res.json();
+      return data.members;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1500);
+    }
+
+    function quarterOptions(selectedValue) {
+      let html = "";
+      for (let i = 1; i <= TOTAL_QUARTERS; i++) {
+        html += `<option value="${i}" ${i === selectedValue ? "selected" : ""}>Q${i}</option>`;
+      }
+      return html;
+    }
+
+    function render(members) {
+      const grid = document.getElementById("memberGrid");
+      grid.innerHTML = "";
+      const selected = new Set();
+      const partials = {};
+
+      const rebuildPartialUI = () => {
+        const wrap = document.getElementById("partialSection");
+        const list = document.getElementById("partialList");
+        const selectedMembers = members.filter((m) => selected.has(m.id));
+        if (selectedMembers.length === 0) {
+          wrap.style.display = "none";
+          return;
+        }
+        wrap.style.display = "";
+        list.innerHTML = "";
+        for (const m of selectedMembers) {
+          const cur = partials[m.id] || { start: 1, end: TOTAL_QUARTERS };
+          partials[m.id] = cur;
+          const row = document.createElement("div");
+          row.className = "partial-row";
+          row.innerHTML = `
+            <span class="partial-name">${m.name}</span>
+            <select data-id="${m.id}" data-kind="start">${quarterOptions(cur.start)}</select>
+            <span class="partial-sep">~</span>
+            <select data-id="${m.id}" data-kind="end">${quarterOptions(cur.end)}</select>
+          `;
+          list.appendChild(row);
+        }
+        list.querySelectorAll("select").forEach((sel) => {
+          sel.addEventListener("change", () => {
+            const id = sel.dataset.id;
+            const kind = sel.dataset.kind;
+            partials[id][kind] = parseInt(sel.value, 10);
+            if (partials[id].start > partials[id].end) {
+              if (kind === "start") partials[id].end = partials[id].start;
+              else partials[id].start = partials[id].end;
+              rebuildPartialUI();
+            }
+          });
+        });
+      };
+
+      const updateCount = () => {
+        const n = selected.size;
+        const info = document.getElementById("countInfo");
+        const btn = document.getElementById("generateBtn");
+        info.textContent = `${n}명 선택`;
+        if (n === 6 || n === 7) {
+          info.classList.add("valid");
+          info.classList.remove("invalid");
+          btn.disabled = false;
+        } else {
+          info.classList.remove("valid");
+          if (n > 0) info.classList.add("invalid");
+          btn.disabled = true;
+        }
+        rebuildPartialUI();
+      };
+
+      for (const m of members) {
+        const label = document.createElement("label");
+        label.className = "member-item";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = m.id;
+        cb.addEventListener("change", () => {
+          if (cb.checked) {
+            selected.add(m.id);
+            label.classList.add("checked");
+          } else {
+            selected.delete(m.id);
+            label.classList.remove("checked");
+            delete partials[m.id];
+          }
+          updateCount();
+        });
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = m.name;
+        label.appendChild(cb);
+        label.appendChild(nameSpan);
+        grid.appendChild(label);
+      }
+
+      document.getElementById("generateBtn").addEventListener("click", () => {
+        const chosenMembers = members.filter((m) => selected.has(m.id));
+        const chosen = chosenMembers.map((m) => m.name);
+        const format = document.querySelector('input[name="format"]:checked').value;
+
+        const quartersMap = {};
+        for (const m of chosenMembers) {
+          const p = partials[m.id];
+          if (p && (p.start > 1 || p.end < TOTAL_QUARTERS)) {
+            quartersMap[m.name] = { start: p.start, end: p.end };
+          }
+        }
+
+        try {
+          const schedule = buildSchedule(chosen, format, quartersMap);
+          const v = validateSchedule(schedule, chosen.length, format, quartersMap);
+          if (!v.ok) {
+            alert("배정 검증 실패:\n- " + v.errors.join("\n- "));
+            return;
+          }
+          renderResult(schedule, chosen, format, v, quartersMap);
+        } catch (e) {
+          alert(e.message);
+        }
+      });
+    }
+
+    function renderResult(schedule, players, format, v, quartersMap) {
+      const section = document.getElementById("resultSection");
+      section.classList.remove("hidden");
+      const table = document.getElementById("resultTable");
+      const hasRest = schedule.some((q) => q.rest.length > 0);
+      let html = `<tr><th>쿼터</th><th>키퍼</th>${hasRest ? "<th>휴식</th>" : ""}<th>필드</th></tr>`;
+      for (const q of schedule) {
+        html += `<tr>
+          <th>Q${q.quarter}</th>
+          <td class="gk">${q.gk}</td>
+          ${hasRest ? `<td class="rest">${q.rest.join(", ") || "-"}</td>` : ""}
+          <td>${q.field.join(", ")}</td>
+        </tr>`;
+      }
+      table.innerHTML = html;
+
+      const gkSummary = players.map((p) => `${p}${v.gkCount[p] || 0}`).join(" · ");
+      let summaryHtml = `키퍼 총 횟수: ${gkSummary}`;
+      if (hasRest) {
+        const restSummary = players.map((p) => `${p}${v.restCount[p] || 0}`).join(" · ");
+        summaryHtml += `<br>휴식 총 횟수: ${restSummary}`;
+      }
+      const limited = Object.entries(quartersMap || {});
+      if (limited.length) {
+        const tags = limited.map(([n, r]) => `${n}(Q${r.start}~${r.end})`).join(", ");
+        summaryHtml += `<br>부분 참여: ${tags}`;
+      }
+      document.getElementById("summary").innerHTML = summaryHtml;
+
+      const warnBox = document.getElementById("warnings");
+      if (schedule.warnings && schedule.warnings.length) {
+        warnBox.innerHTML = "⚠️ " + schedule.warnings.join(" / ");
+      } else {
+        warnBox.innerHTML = "";
+      }
+
+      const copyBtn = document.getElementById("copyBtn");
+      copyBtn.onclick = async () => {
+        const text = formatForKakao(schedule, format, players, quartersMap);
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast("복사됨! 카톡에 붙여넣기");
+        } catch (e) {
+          prompt("복사가 지원되지 않습니다. 아래 텍스트를 수동 복사하세요:", text);
+        }
+      };
+
+      section.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function showFatal(msg) {
+      const box = document.createElement("div");
+      box.style.cssText = "background:#fee;border:1px solid #c00;color:#900;padding:12px;margin:12px 0;border-radius:8px;font-size:13px;white-space:pre-wrap;";
+      box.textContent = "진단: " + msg;
+      document.body.insertBefore(box, document.body.firstChild);
+    }
+    window.addEventListener("error", (e) => showFatal("JS 에러: " + e.message + " @ " + (e.filename || "?") + ":" + e.lineno));
+
+    loadMembers()
+      .then((members) => {
+        if (!Array.isArray(members)) { showFatal("members가 배열이 아님: " + typeof members); return; }
+        if (members.length === 0) { showFatal("members가 빈 배열. localStorage 또는 members.json 확인 필요."); return; }
+        try { render(members); }
+        catch (e) { showFatal("render 에러: " + e.message + "\n" + (e.stack || "")); }
+      })
+      .catch((e) => showFatal("loadMembers 실패: " + e.message));
+  </script>
+</body>
+</html>
