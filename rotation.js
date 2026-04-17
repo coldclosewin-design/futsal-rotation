@@ -240,10 +240,6 @@ function validateSchedule(schedule, playerCount, format, quartersMap) {
   return { ok: errors.length === 0, errors, warnings, gkCount, restCount };
 }
 
-function shortName(name) {
-  return name.length > 0 ? name[0] : "";
-}
-
 function formatForKakao(schedule, format, players, quartersMap) {
   const qMap = quartersMap || {};
   const lines = [];
@@ -273,10 +269,10 @@ function formatForKakao(schedule, format, players, quartersMap) {
     gkCount[q.gk]++;
     for (const r of q.rest) restCount[r]++;
   }
-  const gkSummary = players.map((p) => `${shortName(p)}${gkCount[p]}`).join(" ");
+  const gkSummary = players.map((p) => `${p} ${gkCount[p]}`).join(" · ");
   lines.push(`키퍼 총 횟수: ${gkSummary}`);
   if (Object.values(restCount).some((v) => v > 0)) {
-    const restSummary = players.map((p) => `${shortName(p)}${restCount[p]}`).join(" ");
+    const restSummary = players.map((p) => `${p} ${restCount[p]}`).join(" · ");
     lines.push(`휴식 총 횟수: ${restSummary}`);
   }
   return lines.join("\n");
