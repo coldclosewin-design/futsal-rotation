@@ -10,7 +10,7 @@
   <h1>🥅 풋살 키퍼·휴식 배정</h1>
 
   <div class="section">
-    <h2>오늘 참가자 선택 (6명 또는 7명)</h2>
+    <h2>오늘 참가자 선택 <span id="minHint" style="font-size:12px; color:#888; font-weight:400;">(5v5: 5명 이상, 6v6: 6명 이상)</span></h2>
     <div class="member-grid" id="memberGrid"></div>
     <div class="count-info" id="countInfo">0명 선택</div>
   </div>
@@ -132,8 +132,10 @@
         const n = selected.size;
         const info = document.getElementById("countInfo");
         const btn = document.getElementById("generateBtn");
-        info.textContent = `${n}명 선택`;
-        if (n === 6 || n === 7) {
+        const format = document.querySelector('input[name="format"]:checked').value;
+        const minN = format === "5v5" ? 5 : 6;
+        info.textContent = `${n}명 선택 (${format} 최소 ${minN}명)`;
+        if (n >= minN) {
           info.classList.add("valid");
           info.classList.remove("invalid");
           btn.disabled = false;
@@ -144,6 +146,9 @@
         }
         rebuildPartialUI();
       };
+      document.querySelectorAll('input[name="format"]').forEach((radio) => {
+        radio.addEventListener("change", updateCount);
+      });
 
       for (const m of members) {
         const label = document.createElement("label");
@@ -226,8 +231,8 @@
       document.getElementById("summary").innerHTML = summaryHtml;
 
       const warnBox = document.getElementById("warnings");
-      if (schedule.warnings && schedule.warnings.length) {
-        warnBox.innerHTML = "⚠️ " + schedule.warnings.join(" / ");
+      if (v.warnings && v.warnings.length) {
+        warnBox.innerHTML = "⚠️ " + v.warnings.join(" / ");
       } else {
         warnBox.innerHTML = "";
       }
