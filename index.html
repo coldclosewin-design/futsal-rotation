@@ -37,10 +37,11 @@
   </div>
 
   <div class="section hidden" id="resultSection">
-    <h2>배정 결과</h2>
+    <h2>배정 결과 <span id="shuffleInfo" style="font-size:12px; color:#888; font-weight:400;"></span></h2>
     <table class="result-table" id="resultTable"></table>
     <div class="summary" id="summary"></div>
     <div id="warnings" style="margin-top:8px; font-size:13px; color:#b45309;"></div>
+    <button class="secondary" id="shuffleBtn">🔄 다시 섞기 (다른 조합)</button>
     <button class="copy" id="copyBtn">📋 카톡에 복사</button>
   </div>
 
@@ -174,11 +175,28 @@
         grid.appendChild(label);
       }
 
+      let currentContext = null;
+
+      const runAndRender = (offset) => {
+        const { chosen, format, quartersMap } = currentContext;
+        try {
+          const schedule = buildSchedule(chosen, format, quartersMap, offset);
+          const v = validateSchedule(schedule, chosen.length, format, quartersMap);
+          if (!v.ok) {
+            alert("배정 검증 실패:\n- " + v.errors.join("\n- "));
+            return;
+          }
+          currentContext.offset = offset;
+          renderResult(schedule, chosen, format, v, quartersMap, offset);
+        } catch (e) {
+          alert(e.message);
+        }
+      };
+
       document.getElementById("generateBtn").addEventListener("click", () => {
         const chosenMembers = members.filter((m) => selected.has(m.id));
         const chosen = chosenMembers.map((m) => m.name);
         const format = document.querySelector('input[name="format"]:checked').value;
-
         const quartersMap = {};
         for (const m of chosenMembers) {
           const p = partials[m.id];
@@ -186,24 +204,21 @@
             quartersMap[m.name] = { start: p.start, end: p.end };
           }
         }
+        currentContext = { chosen, format, quartersMap, offset: 0 };
+        runAndRender(0);
+      });
 
-        try {
-          const schedule = buildSchedule(chosen, format, quartersMap);
-          const v = validateSchedule(schedule, chosen.length, format, quartersMap);
-          if (!v.ok) {
-            alert("배정 검증 실패:\n- " + v.errors.join("\n- "));
-            return;
-          }
-          renderResult(schedule, chosen, format, v, quartersMap);
-        } catch (e) {
-          alert(e.message);
-        }
+      document.getElementById("shuffleBtn").addEventListener("click", () => {
+        if (!currentContext) return;
+        runAndRender(currentContext.offset + 1);
       });
     }
 
-    function renderResult(schedule, players, format, v, quartersMap) {
+    function renderResult(schedule, players, format, v, quartersMap, offset) {
       const section = document.getElementById("resultSection");
       section.classList.remove("hidden");
+      const info = document.getElementById("shuffleInfo");
+      info.textContent = offset > 0 ? `(${offset}번 다시 섞음)` : "";
       const table = document.getElementById("resultTable");
       const hasRest = schedule.some((q) => q.rest.length > 0);
       let html = `<tr><th>쿼터</th><th>키퍼</th>${hasRest ? "<th>휴식</th>" : ""}<th>필드</th></tr>`;

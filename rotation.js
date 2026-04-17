@@ -19,15 +19,16 @@ function makeRng(seed) {
   };
 }
 
-function buildSchedule(players, format, quartersMap) {
+function buildSchedule(players, format, quartersMap, shuffleOffset) {
   const qMap = quartersMap || {};
-  // 참가자 부족 에러는 seed와 무관하게 발생하므로 먼저 한 번 시도해 검증
-  const first = buildScheduleDynamic(players, format, qMap, 0);
+  // shuffleOffset은 시드 시작점 이동 → "다시 섞기" 버튼으로 전혀 다른 탐색 공간
+  const base = (shuffleOffset || 0) * RETRY_COUNT;
+  const first = buildScheduleDynamic(players, format, qMap, base);
   let best = first;
   let bestScore = scheduleScore(first, players, qMap, format);
   if (bestScore === 0) return best;
 
-  for (let seed = 1; seed < RETRY_COUNT; seed++) {
+  for (let seed = base + 1; seed < base + RETRY_COUNT; seed++) {
     const s = buildScheduleDynamic(players, format, qMap, seed);
     const score = scheduleScore(s, players, qMap, format);
     if (score < bestScore) {
