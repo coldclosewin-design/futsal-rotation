@@ -175,6 +175,9 @@ button.copy {
   padding: 8px;
   background: #f9f9f9;
   border-radius: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .hidden {
@@ -296,6 +299,10 @@ button.copy {
   }
 
   .result-table {
+    min-width: 520px;
+  }
+
+  .summary {
     min-width: 520px;
   }
 }
