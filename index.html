@@ -13,8 +13,8 @@
     <div class="hub-grid">
       <section class="card">
         <h2>이번 주 투표</h2>
-        <p>준비 중</p>
-        <a href="vote.html">투표 페이지로</a>
+        <p id="weekly-poll-summary" aria-live="polite">투표를 불러오는 중입니다…</p>
+        <a id="weekly-poll-link" href="vote.html">투표 페이지로</a>
       </section>
       <section class="card">
         <h2>매칭 후보</h2>
@@ -39,13 +39,39 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/ui.js"></script>
   <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/data.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("home");
+      const demo = ExicanData.mode() === "demo";
+      const summary = document.getElementById("weekly-poll-summary");
+      if (demo) {
+        document.querySelectorAll('.topnav a[href="index.html"], a[href="vote.html"]').forEach((link) => { link.search = "?demo=1"; });
+      }
+      async function loadSummary() {
+        const [poll, members] = await Promise.all([ExicanData.currentPoll(), ExicanData.members()]);
+        if (!poll) {
+          summary.textContent = "아직 열린 투표가 없습니다. 일요일 13:00에 자동 생성됩니다.";
+          return;
+        }
+        const votes = await ExicanData.votes(poll.id);
+        const { count } = ExicanRules.attendanceSummary(votes, members);
+        const date = ExicanRules.kstDate(poll.closes_at).slice(5).replace("-", "/");
+        const status = ExicanRules.pollStatus(poll, new Date().toISOString());
+        summary.textContent = `참석 ${count}명 · 마감 ${date}(월) 13:00${status === "cancelled" ? " · 취소됨" : status === "closed" ? " · 마감됨" : ""}`;
+      }
       try {
-        await ExicanAuth.renderAuthBar();
-        await ExicanAuth.requireTeam();
+        try { await ExicanAuth.renderAuthBar(); }
+        catch (error) { if (!demo) throw error; }
+        if (!demo) await ExicanAuth.requireTeam();
+        await loadSummary();
+        if (!demo) await ExicanAuth.onAuthChange(async (event, session) => {
+          if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") summary.textContent = "팀 로그인 후 투표를 확인하세요";
+          else await loadSummary();
+        });
       } catch (error) {
+        summary.textContent = "투표를 불러오지 못했습니다. 새로고침해 주세요.";
         showToast(error.message);
       }
     });

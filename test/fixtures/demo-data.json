@@ -1,0 +1,30 @@
+{
+  "members": [
+    { "id": "m01", "name": "오승환", "active": true, "is_president": false },
+    { "id": "m02", "name": "정운수", "active": true, "is_president": false },
+    { "id": "m03", "name": "안준호", "active": true, "is_president": true },
+    { "id": "m04", "name": "박동규", "active": true, "is_president": false },
+    { "id": "m05", "name": "권형관", "active": true, "is_president": false },
+    { "id": "m06", "name": "박규설", "active": true, "is_president": false },
+    { "id": "m07", "name": "조성훈", "active": true, "is_president": false, "injury_from": "2026-10-01", "injury_to": "2026-11-15" },
+    { "id": "m08", "name": "정현욱", "active": true, "is_president": false },
+    { "id": "m09", "name": "최준혁", "active": true, "is_president": false },
+    { "id": "m10", "name": "고유찬", "active": true, "is_president": false },
+    { "id": "m11", "name": "한상훈", "active": true, "is_president": false },
+    { "id": "m12", "name": "전준영", "active": true, "is_president": false }
+  ],
+  "polls": [{ "id": "demo-poll-1", "match_date": "2026-10-17", "opens_at": "2026-10-11T13:00:00+09:00", "closes_at": "2026-10-12T13:00:00+09:00", "cancelled": false }],
+  "poll_votes": [
+    { "poll_id": "demo-poll-1", "member_id": "m01", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m02", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m03", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m04", "choice": "absent", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m05", "choice": "attend", "is_late": true, "updated_at": "2026-10-12T14:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m06", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
+    { "poll_id": "demo-poll-1", "member_id": "m08", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" }
+  ],
+  "match_candidates": [],
+  "candidate_reactions": [],
+  "matches": [],
+  "ledger": []
+}
