@@ -251,8 +251,9 @@ test("추가 기록은 잘못된 부호·금액·필수 멤버·period를 거절
 
 test("장부 참조로 보충한 데모 매치는 기간을 제한하고 원래 matches를 바꾸지 않는다", async () => {
   const { api } = demoHarness();
+  const before = clone(await api.matches());
   assert.equal((await api.ledgerMatches({ from: "2026-10-10", to: "2026-10-15" })).length, 1);
-  assert.deepEqual(clone(await api.matches()), fixture.matches);
+  assert.deepEqual(clone(await api.matches()), before);
 });
 
 function liveHarness(respond, role = "admin") {

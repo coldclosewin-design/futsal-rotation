@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>멤버 현황 · FC EXICAN</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>멤버 현황</h1>
+  <main class="operations-page">
+    <p id="member-message" role="status">현황을 불러오는 중입니다…</p>
+    <button id="member-retry" type="button" hidden>다시 불러오기</button>
+    <div id="member-content"></div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ledger-rules.js"></script>
+  <script src="js/data-ledger.js"></script>
+  <script src="js/attendance-rules.js"></script>
+  <script src="js/data-admin.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      renderNav("member");
+      const data = ExicanData, rules = ExicanAttendance, e = escapeHtml;
+      const get = (id) => document.getElementById(id);
+      const demo = data.mode() === "demo";
+      let people = [], selected = new URLSearchParams(location.search).get("id"), version = 0;
+      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+
+      async function load() {
+        const request = ++version;
+        get("member-retry").hidden = true;
+        get("member-content").textContent = "";
+        get("member-message").hidden = false;
+        get("member-message").textContent = "현황을 불러오는 중입니다…";
+        try {
+          if (!demo && !["team", "admin"].includes(await ExicanAuth.getRole())) throw new Error("팀 로그인 후 현황을 확인하세요");
+          people = await data.members();
+          if (!selected) selected = (await ExicanMember.ensure(people)).id;
+          const person = people.find((row) => row.id === selected);
+          if (!person) throw new Error("활동 멤버를 찾을 수 없습니다. 주소의 멤버 ID를 확인하세요");
+          const today = ExicanRules.kstDate(new Date()), month = today.slice(0, 7);
+          const from = new Date(Date.parse(`${today}T00:00:00Z`) - 84 * 86400000).toISOString().slice(0, 10);
+          const [rows, polls, matches, history] = await Promise.all([data.ledgerRange(), data.polls({ from, to: today }), data.matches({ from }), data.rotationHistory({ memberId: selected })]);
+          const votes = await data.votesByPolls(polls.map((poll) => poll.id));
+          const games = matches.filter((match) => match.status === "played" && match.match_date <= today);
+          const attendance = (await Promise.all(games.map((match) => data.attendance(match.id)))).flat();
+          if (request !== version) return;
+          const total = ExicanLedgerRules.memberSummary(rows, selected, month);
+          const outstanding = rows.filter((row) => row.member_id === selected && !row.settled).reduce((sum, row) => sum + Number(row.amount), 0);
+          const fines = rows.filter((row) => row.member_id === selected && row.category.startsWith("fine_")).sort((a, b) => b.entry_date.localeCompare(a.entry_date) || b.id - a.id).slice(0, 20);
+          const rate = rules.attendanceRate(games, votes, attendance, selected, 12, today);
+          const eligiblePolls = polls.filter((poll) => !poll.cancelled);
+          const voted = eligiblePolls.filter((poll) => votes.some((vote) => vote.poll_id === poll.id && vote.member_id === selected)).length;
+          const rotation = rules.rotationTotals(history, selected);
+          get("member-content").innerHTML = `<section class="section"><h2>${e(person.name)}</h2><label>다른 멤버 보기<select id="member-select">${people.map((row) => `<option value="${e(row.id)}" ${row.id === selected ? "selected" : ""}>${e(row.name)}</option>`).join("")}</select></label></section>
+            <section class="section"><h2>${e(month)} 납부</h2>${rows.some((row) => row.member_id === selected && row.entry_date.startsWith(month)) ? `<dl class="operations-stats"><div><dt>회비</dt><dd>${formatWon(total.due)}</dd></div><div><dt>벌금</dt><dd>${formatWon(total.fine)}</dd></div><div><dt>면제</dt><dd>${formatWon(total.exempt)}</dd></div><div><dt>환급</dt><dd>${formatWon(total.refund)}</dd></div><div><dt>정산 완료</dt><dd>${formatWon(total.settled)}</dd></div><div class="${total.outstanding > 0 ? "operations-unpaid" : ""}"><dt>${total.outstanding < 0 ? "환급 대기" : "미납"}</dt><dd>${formatWon(Math.abs(total.outstanding))}</dd></div></dl>` : "<p>기록 없음</p>"}<p>전 기간 미정산 합계 <strong>${formatWon(outstanding)}</strong></p></section>
+            <section class="section"><h2>벌금 이력 <small>최근 20건</small></h2>${fines.length ? `<ul class="operations-history">${fines.map((row) => `<li><time>${e(row.entry_date)}</time> · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])}<br><strong>${formatWon(row.amount)}</strong> · ${row.settled ? "정산 완료" : "미정산"}</li>`).join("")}</ul>` : "<p>기록 없음</p>"}</section>
+            <section class="section"><h2>최근 12주 참석률</h2><p class="operations-number">${rate.rate === null ? "기록 없음" : `${Math.round(rate.rate * 100)}%`}</p><p>완료 경기 ${rate.polled}회 중 출석 ${rate.attended}회</p><p>지각·경기 후 도착도 출석으로 집계합니다.</p><p>투표 참여율 ${eligiblePolls.length ? `${Math.round(voted / eligiblePolls.length * 100)}% (${voted}/${eligiblePolls.length}회)` : "기록 없음"}</p></section>
+            <section class="section"><h2>배정 누적</h2>${rotation.matches ? `<dl class="operations-stats"><div><dt>경기 수</dt><dd>${rotation.matches}회</dd></div><div><dt>키퍼</dt><dd>${rotation.gk}회</dd></div><div><dt>휴식</dt><dd>${rotation.rest}회</dd></div><div><dt>키퍼·휴식 쿼터</dt><dd>${rotation.outQuarters}회</dd></div></dl><p>경기당 평균 · 키퍼 ${(rotation.gk / rotation.matches).toFixed(1)}회 / 휴식 ${(rotation.rest / rotation.matches).toFixed(1)}회</p>` : "<p>기록 없음</p>"}</section>`;
+          get("member-message").hidden = true;
+          get("member-select").onchange = (event) => {
+            selected = event.target.value;
+            const url = new URL(location.href); url.searchParams.set("id", selected);
+            window.history.replaceState(null, "", url);
+            load();
+          };
+        } catch (error) {
+          if (request !== version) return;
+          get("member-content").textContent = "";
+          get("member-message").textContent = error.message;
+          get("member-retry").hidden = false;
+        }
+      }
+      get("member-retry").onclick = load;
+      if (!demo) {
+        await ExicanAuth.renderAuthBar();
+        await ExicanAuth.onAuthChange(async (event, session) => {
+          version += 1;
+          get("member-content").textContent = "";
+          if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") {
+            get("member-message").hidden = false;
+            get("member-message").textContent = "팀 로그인 후 현황을 확인하세요";
+          } else await load();
+        });
+        await ExicanAuth.requireTeam();
+      }
+      await load();
+    });
+  </script>
+</body>
+</html>

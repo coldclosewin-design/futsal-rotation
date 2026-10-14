@@ -29,14 +29,56 @@
     <noscript><p>회칙을 보려면 JavaScript를 켜거나 <a href="docs/rules.md">회칙 원문</a>을 확인하세요.</p></noscript>
 
     <aside class="rules-notice">회칙 개정 제안은 매월 24일까지 운영위원장에게</aside>
+    <section class="section" aria-labelledby="history-title">
+      <h2 id="history-title">경기 기록</h2>
+      <button type="button" id="load-history">불러오기(팀 로그인)</button>
+      <p id="history-message" role="status">팀 로그인 후 경기 기록을 확인할 수 있습니다.</p>
+      <div id="match-history"></div>
+    </section>
   </main>
 
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/markdown-lite.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/attendance-rules.js"></script>
+  <script src="js/data-admin.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("rules");
+      const demo = ExicanData.mode() === "demo";
+      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+      let historyVersion = 0;
+      document.getElementById("load-history").onclick = async () => {
+        const button = document.getElementById("load-history");
+        const message = document.getElementById("history-message");
+        const request = ++historyVersion;
+        button.disabled = true;
+        try {
+          if (!demo) {
+            await ExicanAuth.requireTeam();
+            if (!["team", "admin"].includes(await ExicanAuth.getRole())) throw new Error("팀 로그인이 필요합니다");
+          }
+          const rows = await ExicanData.matchHistory();
+          if (request !== historyVersion) return;
+          const e = escapeHtml;
+          document.getElementById("match-history").innerHTML = rows.length ? `<div class="operations-scroll" role="region" aria-label="경기 기록 표" tabindex="0"><table class="operations-table"><thead><tr>${["날짜", "구장", "상대", "포맷", "스코어", "참석 수", "상태"].map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr><th scope="row">${e(row.match_date)}</th><td>${e(row.venue || "—")}</td><td>${e(row.opponent || "—")}</td><td>${e(row.format || "—")}</td><td>${row.score_us == null || row.score_them == null ? "—" : `${e(row.score_us)}:${e(row.score_them)}`}</td><td>${row.attendance_count}명</td><td>${e(ExicanAttendance.MATCH_LABELS[row.status])}</td></tr>`).join("")}</tbody></table></div>` : "";
+          message.textContent = rows.length ? `최근 ${rows.length}경기 · 표를 좌우로 밀어 확인하세요.` : "경기 기록이 없습니다.";
+        } catch (error) { message.textContent = error.message; }
+        finally { button.disabled = false; }
+      };
+      // 회칙 본문은 인증 초기화나 로그인 성공을 기다리지 않는다.
+      if (!demo) ExicanAuth.onAuthChange((event, session) => {
+        if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") {
+          historyVersion += 1;
+          document.getElementById("match-history").textContent = "";
+          document.getElementById("history-message").textContent = "팀 로그인 후 경기 기록을 확인할 수 있습니다.";
+        }
+      }).catch(() => {});
 
       const { FINES, DUES_MONTHLY, INJURY_EXEMPT_RATE } = EXICAN_CONFIG;
       const fees = [

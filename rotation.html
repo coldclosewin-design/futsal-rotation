@@ -9,6 +9,12 @@
 <body>
   <h1>🥅 풋살 키퍼·휴식 배정</h1>
 
+  <div class="section" id="rotation-integration">
+    <div id="rotation-member"></div>
+    <button type="button" id="load-attendees" disabled>이번 주 참석자 불러오기</button>
+    <p id="rotation-notice" role="status">팀 연결을 확인하는 중입니다. 수동 배정은 그대로 사용할 수 있습니다.</p>
+  </div>
+
   <div class="section">
     <h2>오늘 참가자 선택 <span id="minHint" style="font-size:12px; color:#888; font-weight:400;">(5v5: 5명 이상, 6v6: 6명 이상)</span></h2>
     <div class="member-grid" id="memberGrid"></div>
@@ -43,6 +49,11 @@
     <div id="warnings" style="margin-top:8px; font-size:13px; color:#b45309;"></div>
     <button class="secondary" id="shuffleBtn">🔄 다시 섞기 (다른 조합)</button>
     <button class="copy" id="copyBtn">📋 카톡에 복사</button>
+    <div id="rotation-save" hidden>
+      <label>저장할 매치<select id="rotation-match"></select></label>
+      <button type="button" id="save-rotation">이번 매치에 저장</button>
+      <p id="rotation-save-message" role="status"></p>
+    </div>
   </div>
 
   <div class="link-row">
@@ -53,13 +64,55 @@
 
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/attendance-rules.js"></script>
+  <script src="js/data-admin.js"></script>
   <script src="js/rotation.js?v=4"></script>
   <script>
     renderNav("rotation");
     const LS_KEY = "futsal_members_override";
+    const integration = { connected: false, admin: false, members: [], poll: null, matches: [], result: null, saving: false };
+    const demo = ExicanData.mode() === "demo";
+    const explicitDemo = new URLSearchParams(location.search).get("demo") === "1";
+    if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
 
     async function loadMembers() {
+      try {
+        const role = demo ? "team" : await ExicanAuth.renderAuthBar();
+        if ((demo && explicitDemo) || (!demo && ["team", "admin"].includes(role))) {
+          const members = await ExicanData.members();
+          if (!members.length) throw new Error("활동 멤버가 없습니다");
+          integration.members = members;
+          integration.connected = true;
+          integration.admin = demo ? members.some((member) => member.id === ExicanMember.getId() && member.is_president) : role === "admin";
+          document.getElementById("load-attendees").disabled = false;
+          document.getElementById("rotation-notice").textContent = demo ? "데모 투표와 매치에 연결되었습니다. 저장 결과는 새로고침하면 초기화됩니다." : "이번 주 투표 참석자를 불러올 수 있습니다.";
+          if (demo) {
+            const button = document.createElement("button");
+            button.type = "button"; button.textContent = "내 이름 선택 / 변경";
+            button.onclick = async () => {
+              try {
+                ExicanMember.clear();
+                const member = await ExicanMember.ensure(members);
+                integration.admin = member.is_president;
+                button.textContent = `내 이름: ${member.name} · 변경`;
+                await refreshSave();
+              } catch (error) { showToast(error.message); }
+            };
+            document.getElementById("rotation-member").appendChild(button);
+          }
+          return members;
+        }
+        document.getElementById("rotation-notice").textContent = "설정 전 또는 비로그인 상태입니다. 수동 배정은 사용할 수 있으며, 팀 로그인 후 새로고침하면 투표와 연동됩니다.";
+      } catch (error) {
+        integration.connected = false;
+        document.getElementById("rotation-notice").textContent = `팀 명단 연결 실패: ${error.message}. 오프라인 명단으로 수동 배정합니다.`;
+      }
       const override = localStorage.getItem(LS_KEY);
       if (override) {
         try {
@@ -104,10 +157,10 @@
           const row = document.createElement("div");
           row.className = "partial-row";
           row.innerHTML = `
-            <span class="partial-name">${m.name}</span>
-            <select data-id="${m.id}" data-kind="start">${quarterOptions(cur.start)}</select>
+            <span class="partial-name">${escapeHtml(m.name)}</span>
+            <select data-id="${escapeHtml(m.id)}" data-kind="start">${quarterOptions(cur.start)}</select>
             <span class="partial-sep">~</span>
-            <select data-id="${m.id}" data-kind="end">${quarterOptions(cur.end)}</select>
+            <select data-id="${escapeHtml(m.id)}" data-kind="end">${quarterOptions(cur.end)}</select>
           `;
           list.appendChild(row);
         }
@@ -172,6 +225,22 @@
       }
 
       let currentContext = null;
+      document.getElementById("load-attendees").addEventListener("click", async () => {
+        const button = document.getElementById("load-attendees");
+        button.disabled = true;
+        try {
+          const poll = await ExicanData.currentPoll();
+          if (!poll || poll.cancelled) throw new Error("진행 가능한 이번 주 투표가 없습니다");
+          integration.poll = poll;
+          const names = new Set(ExicanAttendance.rosterFromVotes(await ExicanData.votes(poll.id), integration.members));
+          for (const checkbox of grid.querySelectorAll("input")) {
+            checkbox.checked = names.has(members.find((member) => member.id === checkbox.value)?.name);
+            checkbox.dispatchEvent(new Event("change"));
+          }
+          showToast(`참석 ${selected.size}명 선택`);
+        } catch (error) { showToast(error.message); }
+        finally { button.disabled = !integration.connected; }
+      });
 
       const runAndRender = (offset) => {
         const { chosen, format, quartersMap } = currentContext;
@@ -184,6 +253,8 @@
           }
           currentContext.offset = offset;
           renderResult(schedule, chosen, format, v, quartersMap, offset);
+          integration.result = { schedule, players: chosen, format };
+          refreshSave().catch((error) => showToast(error.message));
         } catch (e) {
           alert(e.message);
         }
@@ -221,29 +292,29 @@
       for (const q of schedule) {
         html += `<tr>
           <th>Q${q.quarter}</th>
-          <td class="gk">${q.gk}</td>
-          ${hasRest ? `<td class="rest">${q.rest.join(", ") || "-"}</td>` : ""}
-          <td>${q.field.join(", ")}</td>
+          <td class="gk">${escapeHtml(q.gk)}</td>
+          ${hasRest ? `<td class="rest">${escapeHtml(q.rest.join(", ") || "-")}</td>` : ""}
+          <td>${escapeHtml(q.field.join(", "))}</td>
         </tr>`;
       }
       table.innerHTML = html;
 
       const gkSummary = players.map((p) => `${p}${v.gkCount[p] || 0}`).join(" · ");
-      let summaryHtml = `키퍼 총 횟수: ${gkSummary}`;
+      let summaryHtml = `키퍼 총 횟수: ${escapeHtml(gkSummary)}`;
       if (hasRest) {
         const restSummary = players.map((p) => `${p}${v.restCount[p] || 0}`).join(" · ");
-        summaryHtml += `<br>휴식 총 횟수: ${restSummary}`;
+        summaryHtml += `<br>휴식 총 횟수: ${escapeHtml(restSummary)}`;
       }
       const limited = Object.entries(quartersMap || {});
       if (limited.length) {
         const tags = limited.map(([n, r]) => `${n}(Q${r.start}~${r.end})`).join(", ");
-        summaryHtml += `<br>부분 참여: ${tags}`;
+        summaryHtml += `<br>부분 참여: ${escapeHtml(tags)}`;
       }
       document.getElementById("summary").innerHTML = summaryHtml;
 
       const warnBox = document.getElementById("warnings");
       if (v.warnings && v.warnings.length) {
-        warnBox.innerHTML = "⚠️ " + v.warnings.join(" / ");
+        warnBox.textContent = "⚠️ " + v.warnings.join(" / ");
       } else {
         warnBox.innerHTML = "";
       }
@@ -269,6 +340,45 @@
       document.body.insertBefore(box, document.body.firstChild);
     }
     window.addEventListener("error", (e) => showFatal("JS 에러: " + e.message + " @ " + (e.filename || "?") + ":" + e.lineno));
+
+    async function refreshSave() {
+      document.getElementById("rotation-save").hidden = !integration.admin || !integration.result;
+      if (!integration.admin || !integration.result) return;
+      integration.poll = await ExicanData.currentPoll();
+      integration.matches = (await ExicanData.matches({ from: ExicanRules.kstDate(new Date()) })).filter((match) => match.status === "scheduled");
+      const select = document.getElementById("rotation-match");
+      const selected = select.value || integration.matches.find((match) => match.match_date === integration.poll?.match_date)?.id;
+      select.innerHTML = integration.matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selected ? "selected" : ""}>${escapeHtml(match.match_date)} ${escapeHtml(match.start_time.slice(0, 5))} · ${escapeHtml(match.venue || "구장 미정")}</option>`).join("");
+      document.getElementById("save-rotation").disabled = !integration.matches.length;
+      document.getElementById("rotation-save-message").textContent = integration.matches.length ? "생성한 배정표를 선택한 매치에 저장합니다." : "저장할 예정 매치가 없습니다.";
+    }
+
+    document.getElementById("save-rotation").addEventListener("click", async () => {
+      if (integration.saving || !integration.result) return;
+      const id = document.getElementById("rotation-match").value;
+      const result = integration.result;
+      integration.saving = true;
+      document.getElementById("save-rotation").disabled = true;
+      try {
+        const rows = ExicanAttendance.rotationRows(result.schedule, result.players, integration.members);
+        await ExicanData.saveRotationHistory(id, rows);
+        try { await ExicanData.updateMatch(id, { schedule: result.schedule }); }
+        catch (error) { throw new Error(`개인 배정 기록은 저장되었습니다. 매치 배정표 저장을 다시 시도하세요: ${error.message}`); }
+        await Promise.all([ExicanData.rotationHistory({ matchId: id }), ExicanData.matches()]);
+        document.getElementById("rotation-save-message").textContent = "배정표와 개인 배정 기록을 저장했습니다";
+        showToast("이번 매치에 저장했습니다");
+      } catch (error) { document.getElementById("rotation-save-message").textContent = error.message; showToast(error.message); }
+      finally { integration.saving = false; document.getElementById("save-rotation").disabled = false; }
+    });
+
+    if (!demo) ExicanAuth.onAuthChange(async () => {
+      const role = await ExicanAuth.getRole();
+      integration.admin = role === "admin";
+      integration.connected = ["team", "admin"].includes(role) && integration.members.length > 0;
+      document.getElementById("load-attendees").disabled = !integration.connected;
+      document.getElementById("rotation-save").hidden = !integration.admin || !integration.result;
+      if (!integration.admin) document.getElementById("rotation-match").textContent = "";
+    }).catch((error) => { document.getElementById("rotation-notice").textContent = error.message; });
 
     loadMembers()
       .then((members) => {
