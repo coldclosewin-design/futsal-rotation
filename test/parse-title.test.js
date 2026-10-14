@@ -84,6 +84,13 @@ test("발주서의 구장명 두 개에서 날짜·시간·모집 문구와 구�
   assert.equal(parseTitle("10/17(토) 8~10시 5v5 매칭 초청합니다!", WRITE_TS).venue, "");
 });
 
+test("구장명의 풋살장·풋살파크·풋살스타디움과 이어지는 한글을 보존한다", () => {
+  assert.equal(parseTitle("10/21(수) 20-22 성남종합운동장 풋살장 초청합니다~!", WRITE_TS).venue, "성남종합운동장 풋살장");
+  for (const venue of ["천마 풋살파크", "로꼬풋살스타디움", "팀스포츠 구장", "샤인풋볼클럽"]) {
+    assert.equal(parseTitle(`10/17(토) 8-10 ${venue} 풋살 팀매칭 구합니다`, WRITE_TS).venue, venue);
+  }
+});
+
 const dateCases = [
   ["10/17", WRITE_TS, "2026-10-17"],
   ["10.17", WRITE_TS, "2026-10-17"],

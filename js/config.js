@@ -1,4 +1,6 @@
 const EXICAN_CONFIG = {
+  TEAM_NAME: "FC EXICAN",
+  SMS_TEMPLATE: "안녕하세요, 모두의풋살 카페 글({제목}) 보고 연락드립니다. 저희는 3040 풋살팀 {팀명}(실력 하~중, 안 다치게 즐겁게 합니다)입니다. {날짜} {시간} {구장} 매치 가능할까요? 저희 인원 {인원}, {포맷} 희망합니다. 구장비 조건도 알려주시면 감사하겠습니다.",
   SUPABASE_URL: "https://ycczxijymewmuijkxgch.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3p4aWp5bWV3bXVpamt4Z2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5ODY4MTIsImV4cCI6MjEwNzU2MjgxMn0.CeePKk9p90Pc0sNhNhI1o56_66mVAdyoYhOqcm5l_9Y",
   TEAM_EMAIL: "team@fcexican.local",

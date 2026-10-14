@@ -75,7 +75,7 @@ test("buildCandidateRow: 첫 글의 날짜·요일·시각·점수와 스크래�
   assert.equal(row.read_count, 17);
   assert.equal(row.comment_count, 0);
   assert.equal(row.parsed_format, null);
-  assert.equal(row.venue, "성남종합운동장 장");
+  assert.equal(row.venue, "성남종합운동장 풋살장");
 });
 
 test("buildCandidateRow: 말머리 또는 제목이 마감이면 -1000을 저장한다", () => {
