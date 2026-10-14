@@ -16,7 +16,7 @@
 ## 변경 파일
 - `js/rotation.js`
 - `test/rotation.test.js` — 케이스 추가 (기존 91개 어서션은 그대로 유지)
-- 구형 브라우저 테스트 페이지 — 기존 실패 1건 수정: 기대 문자열 `A(Q1~4)` → `A(Q1~Q4)` (테스트 쪽 오타). 그 외 변경 없음
+- `tests.html` — 기존 실패 1건 수정: 기대 문자열 `A(Q1~4)` → `A(Q1~Q4)` (테스트 쪽 오타). 그 외 변경 없음
 - `README.md` — "배정 규칙" 절에 간격 균등화 설명 3~4줄
 
 ## 변경 금지
@@ -65,13 +65,13 @@
 ## 수용 기준
 - [ ] `npm test` 통과, 기존 91개 어서션 변경 없음(라벨·임계값 동일), 신규 spacing/determinism 케이스 포함
 - [ ] `playerSpacing`, `spacingPenalty`, `SPACING_WEIGHT`가 export 되고 브라우저 전역으로도 노출된다(`rotation.html`에서 `typeof spacingPenalty === "function"`)
-- [ ] 구형 브라우저 테스트 페이지가 브라우저에서 `PASS 92 · FAIL 0`
+- [ ] `tests.html`이 브라우저에서 `PASS 92 · FAIL 0`
 - [ ] `rotation.html`에서 7명/5v5 생성 시 결과표가 나오고 경고 영역에 "간격 편중"이 없다(수동, 2~3회 다시 섞기 포함)
 - [ ] PR 본문에 7명/5v5·8명/6v6의 변경 전/후 배정표 1개씩과 spacingPenalty 값을 첨부
 
 ## 테스트 방법
 - 자동: `npm test`
-- 수동: `python -m http.server 8765` → `/rotation.html`, 구형 브라우저 테스트 페이지
+- 수동: `python -m http.server 8765` → `/rotation.html`, `/tests.html`
 
 ## 참고
 - `js/rotation.js`: `buildSchedule`, `buildScheduleDynamic`, `scheduleScore`, `validateSchedule`, `getQuarterRange`

@@ -10,7 +10,7 @@ FC EXICAN(12명)은 매주 토요일 오전 풋살을 진행한다. 회장이 �
 목표: 회장이든 팀원이든 누구나 접속해서 현재 상황(이번 주 투표, 매칭 후보, 확정 매치, 장부, 배정표)을 한눈에 보고, 반복 작업을 자동화한 **운영 허브**를 기존 레포(`coldclosewin-design/futsal-rotation`, GitHub Pages)에 확장해서 만든다. 구현은 Codex 클라우드에 PR 단위로 외주하고 Claude Code가 기획·리뷰·머지를 맡는다.
 
 ### 조사 결과 (2026-10-14)
-- 기존 레포: 순수 HTML/JS, 빌드 없음, Pages는 `main`/root에서 배포 중, 이슈·PR 0건, 커밋 11건(절반이 Codex 작성). `rotation.js`(배정 엔진), `test.js`(Node 회귀 테스트 91건), `members.json`(12명), `index.html`, 구형 멤버 편집 페이지.
+- 기존 레포: 순수 HTML/JS, 빌드 없음, Pages는 `main`/root에서 배포 중, 이슈·PR 0건, 커밋 11건(절반이 Codex 작성). `rotation.js`(배정 엔진), `test.js`(Node 회귀 테스트 91건), `members.json`(12명), `index.html`, `members-admin.html`.
 - 네이버 카페 **글 목록 API는 비로그인 공개**: `https://apis.naver.com/cafe-web/cafe2/ArticleListV2dot1.json?search.clubid=11367414&search.menuid={623|625|627|922}&search.perPage=30&search.page=1&search.queryType=lastArticle` → `articleId, subject, headName(지역 또는 "매치마감"), writeDateTimestamp, commentCount, readCount`. **글 본문(연락처)은 로그인 필수(401)**.
 - 제목 포맷이 제각각: `10/17(토) 06-08시 …`, `10.18(토)/08:00~10:00/…`, `10월 18일 일요일 오전 10~12시 …`, `26.10.18 … 6vs6 …`, `17일 (토) … 16시~18시` → 정규식 파서 + "미분류" 폴백 필요.
 - gh CLI는 `coldclosewin-design` 계정으로 로그인, 레포 admin 권한 있음.

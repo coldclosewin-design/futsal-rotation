@@ -18,8 +18,8 @@
 - `README.md` — 전면 개편 (아래 §3)
 - `CHANGELOG.md` — v2.0.0 항목
 - `package.json` — `"version": "2.0.0"`
-- 구형 브라우저 테스트 페이지 — 삭제 (Node 테스트가 대체). 구형 멤버 편집 페이지 — 삭제하고 내비·README에서 제거 (010b `admin.html`이 대체). `members.json`은 폴백으로 유지
-- `js/ui.js` — 내비 항목에 `member.html`("내 현황") 추가, 구형 멤버 편집 페이지 링크 제거
+- `tests.html` — 삭제 (Node 테스트가 대체). `members-admin.html` — 삭제하고 내비·README에서 제거 (010b `admin.html`이 대체). `members.json`은 폴백으로 유지
+- `js/ui.js` — 내비 항목에 `member.html`("내 현황") 추가, `members-admin` 링크 제거
 - (신규) `test/share.test.js`
 
 ## 변경 금지
@@ -54,13 +54,13 @@
 - Added/Changed/Removed/Infra 항목으로 001~011 요약(각 1줄). 날짜는 PR 머지일.
 
 ### 5. 삭제 영향
-- 구형 브라우저 테스트 페이지 삭제 시 README·AGENTS.md 언급 제거. 구형 멤버 편집 페이지 삭제 시 `rotation.html`의 "⚙️ 멤버 관리" 링크를 `admin.html`로 교체.
+- `tests.html` 삭제 시 README·AGENTS.md 언급 제거. `members-admin.html` 삭제 시 `rotation.html`의 "⚙️ 멤버 관리" 링크를 `admin.html`로 교체.
 
 ## 수용 기준
 - [ ] `npm test` 통과 (기존 + share 6개 이상)
 - [ ] `index.html?demo=1`: 상단 띠 D-day 표시, 카드 6개, 공유 버튼 2개 클릭 시 복사 토스트(클립보드 불가 환경은 prompt)
 - [ ] 홈 로드 시 `requireTeam` 호출이 1회 (콘솔에서 `ExicanAuth.requireTeam`을 래핑해 횟수 확인, PR 본문에 기재)
-- [ ] 내비에 "내 현황" 추가, 삭제한 두 HTML 파일의 경로 문자열 참조가 저장소에 없음(`git grep`)
+- [ ] 내비에 "내 현황" 추가, `members-admin.html`·`tests.html` 참조가 저장소에 없음(`git grep`)
 - [ ] README에 비밀값 없음, 배포 URL·사용법·운영 절차 포함
 - [ ] `CHANGELOG.md` v2.0.0 항목, `package.json` version 2.0.0
 - [ ] 375px 가로 넘침 없음, 콘솔 에러 없음

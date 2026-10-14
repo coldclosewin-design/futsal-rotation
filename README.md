@@ -107,7 +107,7 @@ python -m http.server 8765
 
 로컬 홈은 `http://localhost:8765/index.html?demo=1`에서 확인합니다. 브라우저에서 375px 폭, 콘솔 오류, 공유 복사와 폴백을 점검합니다. 데모는 실제 인증·RLS·Cron의 운영 검증을 대신하지 않습니다. 실제 DB 적용과 배포 확인은 회장·운영 담당자가 수행합니다.
 
-작업은 [AGENTS.md](AGENTS.md)의 발주서 1건 → 브랜치 1개 → PR 1개 절차를 따릅니다. PR에는 원문 수용 기준, 자동 테스트 결과, 수동 화면 확인과 가정을 적습니다. DB 설치·업그레이드는 [Supabase 적용 안내](supabase/README.md)를 따르세요. v2.0.0 날짜와 태그는 이 릴리스 PR을 머지할 때 확정합니다.
+작업은 [AGENTS.md](AGENTS.md)의 발주서 1건 → 브랜치 1개 → PR 1개 절차를 따릅니다. PR에는 원문 수용 기준, 자동 테스트 결과, 수동 화면 확인과 가정을 적습니다. DB 설치·업그레이드는 [Supabase 적용 안내](supabase/README.md)를 따르세요.
 
 ## 배정 규칙
 

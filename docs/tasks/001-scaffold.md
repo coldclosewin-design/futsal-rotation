@@ -16,14 +16,14 @@
 ## 변경 파일
 - `index.html` — 허브 홈으로 교체 (아래 5번)
 - (신규) `rotation.html` — 현재 `index.html`의 내용을 그대로 이관 + 공용 내비 적용
-- `rotation.js` → `js/rotation.js`로 이동 (`git mv`). 내용 변경 없음. 참조 경로 갱신: `rotation.html`, 구형 브라우저 테스트 페이지, 테스트
+- `rotation.js` → `js/rotation.js`로 이동 (`git mv`). 내용 변경 없음. 참조 경로 갱신: `rotation.html`, `tests.html`, 테스트
 - `test.js` → (신규) `test/rotation.test.js`로 변환 후 루트 `test.js` 삭제 (아래 3번)
 - (신규) `package.json`
 - (신규) `.github/workflows/test.yml`
 - (신규) `js/config.js`, `js/ui.js`
 - `styles.css` — 내비·카드 공용 스타일 추가
-- 구형 멤버 편집 페이지 — `rotation.html`로 돌아가는 링크 경로만 수정, 공용 내비 적용
-- 구형 브라우저 테스트 페이지 — `js/rotation.js` 경로만 수정
+- `members-admin.html` — `rotation.html`로 돌아가는 링크 경로만 수정, 공용 내비 적용
+- `tests.html` — `js/rotation.js` 경로만 수정
 - `README.md` — "파일 구성", "테스트" 절을 새 구조로 갱신
 - `.gitignore` — `node_modules/` 추가
 
@@ -56,7 +56,7 @@
    }
    ```
 5. **index.html (허브 홈)**: 제목 "⚽ FC EXICAN 운영 허브". 공용 내비 아래에 카드 4개를 세로로 배치: "이번 주 투표", "매칭 후보", "확정 매치", "장부 요약". 각 카드는 "준비 중" 문구와 해당 페이지 링크. 하단에 "배정표 만들기" 큰 버튼(`rotation.html`). 데이터 호출 없음.
-6. **공용 내비 `js/ui.js`**: `renderNav(activeKey)` — `<nav class="topnav">`를 `body` 맨 앞에 삽입. 항목: 홈(`index.html`), 투표(`vote.html`), 매칭(`matches.html`), 배정표(`rotation.html`), 장부(`ledger.html`), 회칙(`rules.html`), 관리(`admin.html`). 존재하지 않는 페이지도 링크는 둔다. 모바일에서 가로 스크롤되는 한 줄 탭 바. 또한 `showToast(msg)`, `escapeHtml(str)`, `formatWon(n)`(예: `30,000원`) 를 export. 기존 `index.html`·구형 멤버 편집 페이지의 `showToast`는 `ui.js` 것으로 교체.
+6. **공용 내비 `js/ui.js`**: `renderNav(activeKey)` — `<nav class="topnav">`를 `body` 맨 앞에 삽입. 항목: 홈(`index.html`), 투표(`vote.html`), 매칭(`matches.html`), 배정표(`rotation.html`), 장부(`ledger.html`), 회칙(`rules.html`), 관리(`admin.html`). 존재하지 않는 페이지도 링크는 둔다. 모바일에서 가로 스크롤되는 한 줄 탭 바. 또한 `showToast(msg)`, `escapeHtml(str)`, `formatWon(n)`(예: `30,000원`) 를 export. 기존 `index.html`·`members-admin.html`의 `showToast`는 `ui.js` 것으로 교체.
 7. **rotation.html**: 기존 `index.html`과 기능·문구 동일. `<script src="js/rotation.js?v=4">` 로 경로·버전 갱신. 상단 내비 `renderNav("rotation")`.
 8. **styles.css**: `.topnav`, `.card`, `.hub-grid` 스타일 추가. 기존 셀렉터는 변경하지 않음.
 9. 페이지 공통 `<head>`: `<meta name="viewport" content="width=device-width, initial-scale=1">`, `lang="ko"`.
@@ -65,8 +65,8 @@
 - [ ] `npm test` 통과, 출력에 `pass 91` 이상 (`fail 0`)
 - [ ] `.github/workflows/test.yml`이 PR에서 실행된다 (PR 체크에 표시)
 - [ ] `rotation.html`에서 참가자 7명 선택 → 5v5 → 배정표 생성 → 카톡 복사가 이전과 동일하게 동작
-- [ ] 구형 멤버 편집 페이지에서 "← 배정 화면으로" 링크가 `rotation.html`로 이동
-- [ ] 구형 브라우저 테스트 페이지가 브라우저에서 에러 없이 로드되고 기존 테스트 결과를 표시
+- [ ] `members-admin.html`에서 "← 배정 화면으로" 링크가 `rotation.html`로 이동
+- [ ] `tests.html`이 브라우저에서 에러 없이 로드되고 기존 테스트 결과를 표시
 - [ ] `index.html`이 내비 + 카드 4개 + 배정표 버튼을 보여주고 콘솔 에러가 없다
 - [ ] 375px 폭에서 내비가 한 줄 탭으로 스크롤되고 페이지 가로 스크롤이 없다
 - [ ] `js/config.js`가 브라우저(`window.EXICAN_CONFIG`)와 Node(`require`) 양쪽에서 로드된다 (테스트 1개 추가: `test/config.test.js`에서 키 존재 확인)
@@ -74,7 +74,7 @@
 
 ## 테스트 방법
 - 자동: `npm test`
-- 수동: `python -m http.server 8765` 후 `http://localhost:8765/` (홈), `/rotation.html`, 구형 멤버 편집 페이지, 구형 브라우저 테스트 페이지 순서로 확인. 브라우저 개발자도구 → 기기 모드 375px.
+- 수동: `python -m http.server 8765` 후 `http://localhost:8765/` (홈), `/rotation.html`, `/members-admin.html`, `/tests.html` 순서로 확인. 브라우저 개발자도구 → 기기 모드 375px.
 
 ## 참고
 - 기존 `index.html`의 `loadMembers`, `render`, `renderResult`는 그대로 `rotation.html`로 옮깁니다.
