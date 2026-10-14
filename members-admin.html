@@ -29,21 +29,17 @@
   </div>
 
   <div class="link-row">
-    <a href="index.html">← 배정 화면으로</a>
+    <a href="rotation.html">← 배정 화면으로</a>
   </div>
 
   <div class="toast" id="toast"></div>
 
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
   <script>
+    renderNav("admin");
     const LS_KEY = "futsal_members_override";
     let members = [];
-
-    function showToast(msg) {
-      const t = document.getElementById("toast");
-      t.textContent = msg;
-      t.classList.add("show");
-      setTimeout(() => t.classList.remove("show"), 1500);
-    }
 
     async function loadInitial() {
       const override = localStorage.getItem(LS_KEY);

@@ -31,14 +31,31 @@
 ## 파일 구성
 
 ```text
-index.html           메인 화면 - 참가자 선택, 부분 참가 설정, 결과 생성
+index.html           FC EXICAN 운영 허브 - 공용 내비, 준비 중 카드 4개
+rotation.html        배정 화면 - 참가자 선택, 부분 참가 설정, 결과 생성
 members-admin.html   멤버 관리 화면 - members.json 편집용
 members.json         멤버 목록 데이터
-rotation.js          배정 알고리즘 및 검증 로직
-styles.css           UI 스타일
-test.js              Node 기반 회귀 테스트
+js/
+  config.js          공용 설정 (브라우저 전역 / Node CommonJS)
+  ui.js              공용 내비, 토스트, HTML 이스케이프, 원화 표시
+  rotation.js        배정 알고리즘 및 검증 로직
+styles.css           공용 내비·카드 및 기존 배정 UI 스타일
+test/
+  rotation.test.js   Node 회귀 테스트 (기존 91개 검증)
+  config.test.js     브라우저·Node 공용 설정 검증
+  ui.test.js         공용 순수 함수 검증
 tests.html           브라우저 기반 테스트 화면
+package.json         Node 20 이상, npm test 실행 정의 (의존성 없음)
+.github/workflows/
+  test.yml           PR 및 main push 시 Node 20으로 npm test 실행
+docs/
+  PLAN.md            전체 설계
+  tasks/             발주서
+AGENTS.md            저장소 작업 규약
 ```
+
+`vote.html`, `matches.html`, `ledger.html`, `member.html`, `rules.html`, `admin.html`과
+`scripts/`, `supabase/`는 후속 발주서에서 추가합니다. 아직 없는 페이지도 공용 내비에는 링크가 표시됩니다.
 
 ## 로컬에서 실행
 
@@ -103,18 +120,32 @@ git push origin main
 
 ## 테스트
 
-자동 회귀 테스트:
+CI와 동일한 Node 20에서 자동 회귀 테스트를 실행합니다. 별도 패키지 설치는 필요하지 않습니다.
 
 ```bash
-node test.js
+npm test
 ```
 
-브라우저 UI 수동 확인:
+`node --test test/`가 기존 91개 배정 검증과 공용 설정·UI 함수 테스트를 실행합니다.
+GitHub Actions도 모든 PR 및 `main` push에서 같은 명령을 실행합니다.
+
+Node 26에서는 `node --test test/`의 디렉터리 인자가 `MODULE_NOT_FOUND`로 실패할 수 있습니다.
+이 경우 Node 20을 사용하거나 `node --test test/config.test.js test/rotation.test.js test/ui.test.js`로 실행합니다.
+
+HTTP 서버를 실행한 뒤 아래 순서로 브라우저 UI를 확인합니다.
 
 ```text
-http://localhost:8765/tests.html
 http://localhost:8765/index.html
+http://localhost:8765/rotation.html
+http://localhost:8765/members-admin.html
+http://localhost:8765/tests.html
 ```
+
+375px 폭에서 내비의 한 줄 가로 스크롤과 페이지 넘침 여부를 확인하고,
+배정 화면에서 7명 선택 → 5v5 → 배정표 생성 → 카톡 복사를 확인합니다.
+브라우저 테스트는 기존 검증을 유지하며, 부분 참여 표기의 기대 문자열(`A(Q1~4)`)이
+현재 출력(`A(Q1~Q4)`)과 다른 기존 실패 1건이 있습니다 (`PASS 91 · FAIL 1`).
+Node 회귀 테스트는 현재 출력 기준으로 검증합니다.
 
 ## 이번 반영 요약
 
