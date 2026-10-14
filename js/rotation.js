@@ -3,6 +3,7 @@
 
 const TOTAL_QUARTERS = 8;
 const RETRY_COUNT = 2000;
+const SPACING_WEIGHT = 200;
 
 function makeRng(seed) {
   let s = (seed | 0) + 0x9e3779b9;
@@ -30,6 +31,42 @@ function getNormalizedRoleCount(counts, quartersMap, player) {
 
 function getNormalizedLoad(gkCount, restCount, quartersMap, player) {
   return (gkCount[player] + restCount[player]) / getActiveQuarterCount(quartersMap, player);
+}
+
+function playerSpacing(schedule, player, range = { start: 1, end: TOTAL_QUARTERS }) {
+  const outQuarters = schedule
+    .filter((quarter) => quarter.quarter >= range.start && quarter.quarter <= range.end &&
+      (quarter.gk === player || quarter.rest.includes(player)))
+    .map((quarter) => quarter.quarter)
+    .sort((a, b) => a - b);
+  const count = outQuarters.length;
+  if (count === 0) return 0;
+
+  const ideal = (range.end - range.start + 1 - count) / (count + 1);
+  if (ideal === 0) return 0;
+
+  const runs = [outQuarters[0] - range.start];
+  for (let i = 1; i < count; i++) {
+    runs.push(outQuarters[i] - outQuarters[i - 1] - 1);
+  }
+  runs.push(range.end - outQuarters[count - 1]);
+  return runs.reduce((sum, run) => sum + (run - ideal) ** 2, 0) / runs.length / ideal ** 2;
+}
+
+function spacingPenalty(schedule, players, quartersMap = {}) {
+  let total = 0;
+  let count = 0;
+  for (const player of players) {
+    const range = getQuarterRange(quartersMap, player);
+    const hasOut = schedule.some((quarter) =>
+      quarter.quarter >= range.start && quarter.quarter <= range.end &&
+      (quarter.gk === player || quarter.rest.includes(player)));
+    if (hasOut) {
+      total += playerSpacing(schedule, player, range);
+      count++;
+    }
+  }
+  return count ? total / count : 0;
 }
 
 function buildSchedule(players, format, quartersMap, shuffleOffset) {
@@ -91,7 +128,8 @@ function scheduleScore(schedule, players, quartersMap, format) {
   );
   const excessViolations = Math.max(0, violations - (strictPossible ? 0 : minUnavoidable));
 
-  return excessViolations * 10000 + outSpread * 1000 + gkSpread * 100 + restSpread * 100 + (strictPossible ? 0 : violations);
+  return excessViolations * 10000 + outSpread * 1000 + gkSpread * 100 + restSpread * 100 +
+    spacingPenalty(schedule, players, quartersMap) * SPACING_WEIGHT + (strictPossible ? 0 : violations);
 }
 
 function buildScheduleDynamic(players, format, quartersMap, seed = 0) {
@@ -109,10 +147,11 @@ function buildScheduleDynamic(players, format, quartersMap, seed = 0) {
   players = workingPlayers;
   const salts = {};
   for (const player of players) salts[player] = rng();
-  const strategy = seed % 3;
+  const strategy = seed % 4;
 
   const gkCount = Object.fromEntries(players.map((player) => [player, 0]));
   const restCount = Object.fromEntries(players.map((player) => [player, 0]));
+  const lastOut = Object.fromEntries(players.map((player) => [player, getQuarterRange(quartersMap, player).start - 1]));
   const result = [];
   let prevOut = new Set();
 
@@ -136,8 +175,11 @@ function buildScheduleDynamic(players, format, quartersMap, seed = 0) {
       const gkB = getNormalizedRoleCount(gkCount, quartersMap, b);
       const restA = getNormalizedRoleCount(restCount, quartersMap, a);
       const restB = getNormalizedRoleCount(restCount, quartersMap, b);
+      const sinceA = quarter - lastOut[a];
+      const sinceB = quarter - lastOut[b];
 
-      if (strategy === 0) {
+      if (strategy === 0 || strategy === 3) {
+        if (strategy === 3 && sinceA !== sinceB) return sinceB - sinceA;
         if (outA !== outB) return outA - outB;
         if (gkA !== gkB) return gkA - gkB;
         if (restA !== restB) return restA - restB;
@@ -151,6 +193,7 @@ function buildScheduleDynamic(players, format, quartersMap, seed = 0) {
         if (gkA !== gkB) return gkA - gkB;
       }
 
+      if (sinceA !== sinceB) return sinceB - sinceA;
       return salts[a] - salts[b];
     };
 
@@ -171,6 +214,7 @@ function buildScheduleDynamic(players, format, quartersMap, seed = 0) {
 
     gkCount[gk]++;
     for (const player of rest) restCount[player]++;
+    for (const player of selected) lastOut[player] = quarter;
     prevOut = new Set(selected);
 
     result.push({ quarter, gk, rest, field });
@@ -237,6 +281,18 @@ function validateSchedule(schedule, playerCount, format, quartersMap) {
   }
 
   const allPlayers = Array.from(new Set([...Object.keys(gkCount), ...Object.keys(restCount)]));
+  for (const player of allPlayers) {
+    const range = getQuarterRange(qMap, player);
+    if (playerSpacing(schedule, player, range) > 1.0) {
+      const quarters = schedule
+        .filter((quarter) => quarter.quarter >= range.start && quarter.quarter <= range.end &&
+          (quarter.gk === player || quarter.rest.includes(player)))
+        .map((quarter) => quarter.quarter)
+        .sort((a, b) => a - b)
+        .map((quarter) => `Q${quarter}`);
+      warnings.push(`out 간격 편중: ${player} (${quarters.join(",")})`);
+    }
+  }
   const gkVals = allPlayers.map((player) => getNormalizedRoleCount(gkCount, qMap, player));
   const restVals = allPlayers.map((player) => getNormalizedRoleCount(restCount, qMap, player));
   const outVals = allPlayers.map((player) => getNormalizedLoad(gkCount, restCount, qMap, player));
@@ -305,5 +361,8 @@ if (typeof module !== "undefined" && module.exports) {
     validateSchedule,
     formatForKakao,
     TOTAL_QUARTERS,
+    playerSpacing,
+    spacingPenalty,
+    SPACING_WEIGHT,
   };
 }
