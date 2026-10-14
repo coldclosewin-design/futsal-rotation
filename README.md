@@ -39,11 +39,13 @@ js/
   config.js          공용 설정 (브라우저 전역 / Node CommonJS)
   ui.js              공용 내비, 토스트, HTML 이스케이프, 원화 표시
   rotation.js        배정 알고리즘 및 검증 로직
+  parse-title.js     카페 제목 파싱 및 매칭 후보 점수 (브라우저 / Node)
 styles.css           공용 내비·카드 및 기존 배정 UI 스타일
 test/
   rotation.test.js   Node 회귀 테스트 (기존 91개 검증)
   config.test.js     브라우저·Node 공용 설정 검증
   ui.test.js         공용 순수 함수 검증
+  parse-title.test.js 카페 제목 픽스처·파싱 규칙·후보 점수 검증
 tests.html           브라우저 기반 테스트 화면
 package.json         Node 20 이상, npm test 실행 정의 (의존성 없음)
 .github/workflows/
