@@ -28,8 +28,9 @@
       </section>
       <section class="card">
         <h2>장부 요약</h2>
-        <p>준비 중</p>
-        <a href="ledger.html">장부 페이지로</a>
+        <p id="ledger-summary" aria-live="polite">장부를 불러오는 중입니다…</p>
+        <p id="ledger-my-summary" class="ledger-home-mine" hidden></p>
+        <a id="ledger-link" href="ledger.html">장부 페이지로</a>
       </section>
     </div>
     <a class="hub-rotation-link" href="rotation.html">배정표 만들기</a>
@@ -41,6 +42,9 @@
   <script src="js/supabase.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/ledger-rules.js"></script>
+  <script src="js/data-ledger.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("home");
@@ -72,6 +76,45 @@
         });
       } catch (error) {
         summary.textContent = "투표를 불러오지 못했습니다. 새로고침해 주세요.";
+        showToast(error.message);
+      }
+    });
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const demo = ExicanData.mode() === "demo";
+      const summary = document.getElementById("ledger-summary");
+      const mine = document.getElementById("ledger-my-summary");
+      let version = 0;
+      if (demo) document.querySelectorAll("a[href=\"ledger.html\"]").forEach((link) => { link.search = "?demo=1"; });
+      async function loadLedgerSummary() {
+        const request = ++version;
+        const rows = await ExicanData.ledgerRange();
+        if (request !== version) return;
+        const month = ExicanLedgerRules.monthOf(ExicanRules.kstDate(new Date()));
+        const team = ExicanLedgerRules.teamSummary(rows, month);
+        const unpaid = team.unpaidMembers.reduce((sum, row) => sum + row.outstanding, 0);
+        summary.textContent = `팀 잔액 ${formatWon(team.balance)} · 이번 달 미납 ${team.unpaidMembers.length}명 (${formatWon(unpaid)})`;
+        const personal = ExicanLedgerRules.memberSummary(rows, ExicanMember.getId(), month);
+        mine.hidden = !ExicanMember.getId() || personal.outstanding <= 0;
+        mine.textContent = mine.hidden ? "" : `내 미납 ${formatWon(personal.outstanding)}`;
+      }
+      try {
+        if (!demo) await ExicanAuth.requireTeam();
+        await loadLedgerSummary();
+        if (!demo) await ExicanAuth.onAuthChange(async (event, session) => {
+          version += 1;
+          if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") {
+            summary.textContent = "팀 로그인 후 장부를 확인하세요";
+            mine.textContent = "";
+            mine.hidden = true;
+          } else {
+            try { await loadLedgerSummary(); }
+            catch (error) { summary.textContent = "장부를 불러오지 못했습니다. 새로고침해 주세요."; showToast(error.message); }
+          }
+        });
+      } catch (error) {
+        summary.textContent = "장부를 불러오지 못했습니다. 새로고침해 주세요.";
         showToast(error.message);
       }
     });

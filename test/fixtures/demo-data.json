@@ -26,5 +26,28 @@
   "match_candidates": [],
   "candidate_reactions": [],
   "matches": [],
-  "ledger": []
+  "ledger": [
+    { "id": 1, "entry_date": "2026-10-01", "member_id": "m01", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 2, "entry_date": "2026-10-01", "member_id": "m02", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 3, "entry_date": "2026-10-01", "member_id": "m03", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 4, "entry_date": "2026-10-01", "member_id": "m04", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 5, "entry_date": "2026-10-01", "member_id": "m05", "category": "dues", "amount": 30000, "period": "2026-10", "settled": false, "note": "10월 회비" },
+    { "id": 6, "entry_date": "2026-10-01", "member_id": "m06", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 7, "entry_date": "2026-10-01", "member_id": "m07", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 8, "entry_date": "2026-10-01", "member_id": "m08", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 9, "entry_date": "2026-10-01", "member_id": "m09", "category": "dues", "amount": 30000, "period": "2026-10", "settled": false, "note": "10월 회비" },
+    { "id": 10, "entry_date": "2026-10-01", "member_id": "m10", "category": "dues", "amount": 30000, "period": "2026-10", "settled": false, "note": "10월 회비" },
+    { "id": 11, "entry_date": "2026-10-01", "member_id": "m11", "category": "dues", "amount": 30000, "period": "2026-10", "settled": true, "note": "10월 회비" },
+    { "id": 12, "entry_date": "2026-10-01", "member_id": "m12", "category": "dues", "amount": 30000, "period": "2026-10", "settled": false, "note": "10월 회비" },
+    { "id": 13, "entry_date": "2026-10-01", "member_id": "m07", "category": "injury_exempt", "amount": -15000, "period": "2026-10", "settled": false, "note": "부상 면제 50% (회비 납부 후 환급 대기)" },
+    { "id": 14, "entry_date": "2026-10-12", "member_id": "m05", "category": "fine_late_vote", "amount": 5000, "ref_poll_id": "demo-poll-1", "settled": false, "note": "투표 마감 미참여" },
+    { "id": 15, "entry_date": "2026-10-10", "member_id": "m09", "category": "fine_late", "amount": 10000, "ref_match_id": "demo-ledger-match-1", "settled": false, "note": "경기 15분 전 미도착" },
+    { "id": 16, "entry_date": "2026-10-10", "member_id": null, "category": "venue_fee", "amount": -60000, "ref_match_id": "demo-ledger-match-1", "settled": true, "note": "구장 대관료" },
+    { "id": 17, "entry_date": "2026-10-10", "member_id": "m11", "category": "snack", "amount": -8000, "ref_match_id": "demo-ledger-match-1", "settled": false, "note": "물2 음료1" },
+    { "id": 18, "entry_date": "2026-10-03", "member_id": "m03", "category": "president_exempt", "amount": -7500, "ref_match_id": "demo-ledger-match-2", "settled": false, "note": "공식 경기 운영 회장 면제" }
+  ],
+  "snack_claims": [
+    { "id": 1, "match_id": "demo-ledger-match-1", "buyer_id": "m11", "amount": 8000, "items": "물2 음료1", "status": "approved", "created_at": "2026-10-10T10:00:00+09:00" },
+    { "id": 2, "match_id": "demo-ledger-match-1", "buyer_id": "m02", "amount": 9000, "items": "물2 음료2", "status": "pending", "created_at": "2026-10-10T10:10:00+09:00" }
+  ]
 }

@@ -597,3 +597,53 @@ button.copy {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+
+.ledger-page { min-width: 0; }
+.ledger-month { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
+.ledger-month button { width: auto; margin: 0; padding: 10px 14px; background: #e8f3ff; color: #1d4ed8; }
+.ledger-month input { width: 160px; min-width: 0; padding: 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit; }
+.ledger-tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
+.ledger-tiles .card { display: flex; flex-direction: column; gap: 5px; }
+.ledger-tiles strong { color: #1d4ed8; font-size: 24px; overflow-wrap: anywhere; }
+.ledger-tiles small { color: #666; font-size: 12px; }
+.ledger-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.ledger-toolbar button { width: auto; margin: 0; padding: 10px 16px; }
+.ledger-section { margin-top: 16px; min-width: 0; }
+.ledger-section h3 { margin-top: 22px; font-size: 16px; }
+.ledger-table, .ledger-entry-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ledger-table { min-width: 800px; margin: 12px 0; }
+.ledger-table th, .ledger-table td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ledger-table thead { background: #f5f6f8; }
+.ledger-table [data-member] { cursor: pointer; }
+.ledger-table [data-member]:hover { background: #eff6ff; }
+.ledger-table .ledger-expand { width: auto; padding: 0; margin: 0; color: #1d4ed8; background: transparent; font-size: 14px; text-align: left; }
+.ledger-table .ledger-outstanding { color: #b91c1c; font-weight: 700; }
+.ledger-table .ledger-refund { color: #047857; }
+.ledger-table .ledger-details { background: #f8fafc; padding: 12px; }
+.ledger-details > button { width: auto; margin: 0 0 10px; padding: 8px 12px; font-size: 14px; }
+.ledger-entry-table caption { text-align: left; font-weight: 700; padding: 4px 0 10px; }
+.ledger-table .ledger-note { min-width: 180px; max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+.ledger-table input[type="checkbox"] { width: 18px; height: 18px; vertical-align: middle; }
+.ledger-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ledger-admin-actions button { flex: 1 1 130px; width: auto; margin: 0; }
+.ledger-claims { margin: 12px 0 0; padding: 0; list-style: none; }
+.ledger-claims li { padding: 12px 0; border-bottom: 1px solid #e5e7eb; overflow-wrap: anywhere; }
+.ledger-claims small { color: #666; }
+.ledger-claim-status { display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 8px; background: #eff6ff; color: #1e40af; font-size: 13px; }
+.ledger-dialog { width: calc(100% - 32px); max-width: 420px; max-height: calc(100% - 32px); overflow-y: auto; border: 0; padding: 22px; border-radius: 12px; color: #222; }
+.ledger-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+.ledger-dialog h2 { margin: 0 0 16px; font-size: 20px; }
+.ledger-dialog label { display: block; margin: 12px 0 6px; font-size: 14px; }
+.ledger-dialog input, .ledger-dialog select { display: block; width: 100%; min-width: 0; padding: 10px; border: 1px solid #aaa; border-radius: 8px; background: #fff; color: #222; font: inherit; font-size: 16px; }
+.ledger-dialog .ledger-help { color: #555; font-size: 13px; overflow-wrap: anywhere; }
+.ledger-form-error { color: #b91c1c; font-size: 14px; overflow-wrap: anywhere; }
+.ledger-form-error:empty { display: none; }
+.ledger-page button:disabled, .ledger-dialog button:disabled { opacity: 0.55; cursor: wait; }
+.ledger-page button:focus-visible, .ledger-dialog :is(button, input, select):focus-visible { outline: 2px solid #1d4ed8; outline-offset: 3px; }
+.ledger-page ~ .toast { width: max-content; max-width: calc(100% - 24px); overflow-wrap: anywhere; }
+.card .ledger-home-mine { color: #b91c1c; font-weight: 700; }
+.ledger-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 520px) {
+  .ledger-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ledger-tiles strong { font-size: 20px; }
+}
