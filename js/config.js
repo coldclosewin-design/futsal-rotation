@@ -7,6 +7,7 @@ const EXICAN_CONFIG = {
   DUES_MONTHLY: 30000,
   INJURY_EXEMPT_RATE: 0.5,
   PRESIDENT_EXEMPT_MODE: "week",
+  LEDGER_START_MONTH: "2026-11",   // 이 달부터 회비 행 자동 생성 (이전 달은 카톡 정산으로 마감)
   CAFE: {
     CLUB_ID: 11367414,
     MENUS: { 623: "성남/하남", 625: "서울북동", 627: "서울남동", 922: "남양주/구리" },

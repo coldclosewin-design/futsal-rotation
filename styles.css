@@ -440,6 +440,28 @@ button.copy {
   color: #c00;
 }
 
+.vote-page { display: grid; gap: 14px; }
+.vote-page .card { min-width: 0; overflow-wrap: anywhere; }
+.poll-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.poll-status, .late-badge { border-radius: 20px; padding: 2px 8px; font-size: 12px; background: #eee; color: #555; }
+.poll-status[data-status="open"] { background: #e4f4e9; color: #176335; }
+.poll-status[data-status="cancelled"], .late-badge { background: #fff0e5; color: #95410a; }
+.member-badge { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0 10px; font-size: 14px; }
+.member-badge button { width: auto; margin: 0; padding: 6px 10px; font-size: 13px; }
+.member-picker-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.member-picker-grid button { min-width: 0; margin: 0; padding: 14px 4px; font-size: 15px; }
+.vote-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.vote-actions button { margin: 0; padding: 20px 8px; border: 2px solid #ddd; background: #fff; color: #444; font-size: 20px; }
+.vote-actions button[aria-pressed="true"] { border-color: #1d4ed8; background: #e8f3ff; color: #1d4ed8; }
+.vote-page button:disabled, .vote-page input:disabled { cursor: not-allowed; opacity: 0.55; }
+.vote-page button:focus-visible, .poll-cancel input:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 3px; }
+.vote-page #attendance-summary { color: #1d4ed8; font-weight: 600; }
+#attendance-lists h3 { margin: 16px 0 8px; font-size: 14px; }
+.vote-member-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.vote-member-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 100%; padding: 7px 10px; background: #f5f6f8; border-radius: 8px; font-size: 14px; }
+.vote-member-list time { color: #666; font-size: 12px; }
+.poll-cancel { display: flex; align-items: center; gap: 8px; margin: 14px 0; font-size: 14px; }
+
 .json-preview {
   width: 100%;
   min-height: 180px;

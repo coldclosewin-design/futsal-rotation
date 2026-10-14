@@ -31,7 +31,8 @@
 ## 파일 구성
 
 ```text
-index.html           FC EXICAN 운영 허브 - 공용 내비, 준비 중 카드 4개
+index.html           FC EXICAN 운영 허브 - 이번 주 투표 요약, 후속 기능 카드
+vote.html            주간 참석 투표 - 이름 선택, 참석/불참, 현황, 회장 도구
 rotation.html        배정 화면 - 참가자 선택, 부분 참가 설정, 결과 생성
 rules.html           공개 회칙 화면 - 설정 기반 벌금·회비 요약표 및 회칙 전문
 members-admin.html   멤버 관리 화면 - members.json 편집용
@@ -42,6 +43,12 @@ js/
   markdown-lite.js   회칙용 제목·불릿·문단 변환기 (브라우저 / Node)
   rotation.js        배정 알고리즘 및 검증 로직
   parse-title.js     카페 제목 파싱 및 매칭 후보 점수 (브라우저 / Node)
+  member.js          내 이름 선택 모달과 배지 (localStorage)
+  data.js            Supabase/데모 공용 데이터 API
+  rules.js           KST 날짜, 투표 창, 참석 요약, 벌금·회비 순수 함수
+scripts/
+  housekeeping.js   투표 생성, 미투표 벌금, 월회비 정기 작업
+  lib/rest.js        service-role PostgREST 요청 헬퍼
 styles.css           공용 내비·카드 및 기존 배정 UI 스타일
 test/
   rotation.test.js   Node 회귀 테스트 (기존 91개 검증)
@@ -60,8 +67,8 @@ docs/
 AGENTS.md            저장소 작업 규약
 ```
 
-`vote.html`, `matches.html`, `ledger.html`, `member.html`, `admin.html`과
-`scripts/`, `supabase/`는 후속 발주서에서 추가합니다. 아직 없는 페이지도 공용 내비에는 링크가 표시됩니다.
+`matches.html`, `ledger.html`, `member.html`, `admin.html`은
+후속 발주서에서 추가합니다. 아직 없는 페이지도 공용 내비에는 링크가 표시됩니다.
 
 ## 로컬에서 실행
 
@@ -83,7 +90,69 @@ http://localhost:8765
 
 Supabase 설정 후 홈에 처음 접속하면 팀 PIN 입력창이 표시되며, 올바른 PIN을 입력하면 로그인 상태가 브라우저에 저장되어 새로고침해도 유지됩니다.
 인증 바의 **회장 로그인**에서 비밀번호를 입력하면 팀 세션을 로그아웃한 뒤 회장 세션으로 전환하며, **로그아웃**하면 팀 PIN을 다시 입력해야 합니다.
-`js/config.js`의 Supabase URL 또는 anon key가 비어 있으면 인증 바와 설정 전 안내만 표시되며, 데이터 기능은 아직 동작하지 않습니다.
+`js/config.js`의 Supabase URL 또는 anon key가 비어 있으면 홈과 투표 화면은 자동으로 데모 모드로 동작합니다.
+
+## 주간 참석 투표와 공용 데이터
+
+`vote.html`에서 내 이름을 선택하고 **참석 / 불참**을 누르면 현황과 가능 포맷·휴식 인원이 갱신됩니다.
+이름은 `localStorage`의 `exican_member_id`에 저장하고 **변경**으로 다시 고릅니다.
+실제 모드는 팀 로그인이 필요하며 회장 도구는 인증 역할 `admin`일 때만 표시합니다.
+이름 선택은 인증 권한을 바꾸지 않으며, 실제 쓰기 권한은 Supabase RLS가 검사합니다.
+
+투표 창은 경기 전 일요일 13:00부터 월요일 13:00까지(KST)입니다.
+예정·취소 상태에서는 버튼을 비활성화하고, 마감 후에는 벌금 안내와 함께 투표를 허용합니다.
+지각 여부는 DB 트리거가 반환한 `is_late`를 사용합니다. 회장은 취소/복구와 수동 생성을 할 수 있습니다.
+수동 생성은 오늘을 포함한 다가오는 토요일을 대상으로 하며 이미 있으면 중복 안내를 표시합니다.
+
+```text
+http://localhost:8765/vote.html?demo=1
+http://localhost:8765/index.html?demo=1
+```
+
+데모는 `test/fixtures/demo-data.json`을 읽고 투표 날짜를 페이지 로드 시 이번 토요일로 바꿉니다.
+화면 상단에 **데모 데이터입니다 (저장되지 않음)** 배너가 표시됩니다.
+투표·취소 등 데이터 변경은 해당 페이지 메모리에만 반영되어 새로고침이나 페이지 이동으로 초기화됩니다.
+이름 선택은 유지됩니다. 데모에서는 `m03`(안준호)을 선택하면 회장 도구를 미리 볼 수 있습니다.
+초기 참석자는 6명이며 미투표자 조성훈을 선택해 참석하면 7명, 5v5 휴식 2명·6v6 휴식 1명이 됩니다.
+
+전역 `ExicanData`는 `members`, `currentPoll`, `votes`, `castVote`와 회장용 `createPoll`,
+`setPollCancelled`를 제공합니다. 후속 페이지용 `candidates({ from, to, menuId, includeClosed })`,
+`reactions(articleIds)`, `toggleReaction(articleId, memberId)`(선택 여부 반환),
+`updateCandidate(articleId, patch)`, `createMatch(row)`, `matches({ from })`, `ledger({ month })`도 제공합니다.
+후속 페이지용 데모 목록은 빈 배열로 시작하며 실제 조회·수정은 기본 쿼리만 구현했습니다.
+
+## Housekeeping 정기 작업
+
+```bash
+# 시크릿이 없으면 조회도 하지 않고 날짜와 작업 계획만 출력 (종료코드 0)
+node scripts/housekeeping.js --dry-run
+
+# SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수 설정 후 실행
+node scripts/housekeeping.js
+```
+
+시크릿이 있는 `--dry-run`은 DB를 조회하여 생성 예정 행을 출력하지만 쓰지는 않습니다.
+시크릿이 없으면 **조회 생략**을 표시하며 네트워크를 전혀 사용하지 않습니다.
+일반 실행의 시크릿 누락은 종료코드 2, 요청 실패나 잘못된 옵션 등 예외는 1입니다.
+키는 로그에서 가립니다. 브라우저에는 service-role key를 넣지 않습니다.
+
+1. 활동 멤버를 조회하고, 일요일 13:00 이후 다가오는 토요일의 투표가 없으면 생성합니다. 토요일 당일도 대상입니다.
+2. 최근 14일 내 마감된 미취소 투표에서 미투표·지각 멤버의 벌금 행을 요청합니다. 회장도 대상이며 기장일은 마감일(KST)입니다.
+3. 이번 달 1일자로 월회비와 부상 면제 행을 요청합니다. 부상 기간은 양 끝 날짜 포함 28일 이상이고 해당 월에 하루 이상 겹치면 면제합니다. 시작·종료일이 모두 필요합니다.
+
+금액과 면제율은 `js/config.js`만 사용합니다. PostgREST 요청은
+`Prefer: resolution=ignore-duplicates,return=minimal`과 `on_conflict`를 사용합니다.
+충돌 컬럼은 투표 `match_date`, 벌금 `member_id,category,ref_poll_id`, 회비 `member_id,category,entry_date`입니다.
+요약의 행 수는 요청 대상 수이며 실제 신규 저장 수는 그 이하입니다.
+`cron.yml`은 기존 scrape 뒤에 `if: ${{ !cancelled() }}`로 실행하므로 scrape 실패 후에도 실행합니다.
+
+**실제 Supabase 경로는 미검증이며 Claude의 검증이 필요합니다.** 특히 현재 저장소의 장부 unique index는
+조건부(partial) 인덱스입니다. PostgreSQL은 partial index 추론에 대응하는 predicate가 필요하므로,
+발주서대로 컬럼만 지정한 `on_conflict` 요청은 현재 스키마에서 `42P10`으로 실패할 가능성이 있습니다.
+요청 형식 테스트 통과는 실제 DB 멱등성 검증을 의미하지 않습니다. 발주서의 변경 금지에 따라 `supabase/*`는 유지했습니다.
+실제 실행 전에 Claude가 인덱스/쓰기 경로 호환성을 해결하고 두 번 실행하여 중복이 없는지 확인해야 합니다.
+근거: [PostgreSQL ON CONFLICT](https://www.postgresql.org/docs/current/sql-insert.html#SQL-ON-CONFLICT),
+[PostgREST on_conflict](https://docs.postgrest.org/en/stable/references/api/tables_views.html#on-conflict).
 
 ## 카페 수집기
 
@@ -182,7 +251,8 @@ CI와 동일한 Node 20에서 자동 회귀 테스트를 실행합니다. 별도
 npm test
 ```
 
-`node --test`가 `test/*.test.js`를 자동으로 찾아 기존 91개 배정 검증과 공용 설정·UI 함수 테스트를 실행합니다.
+`node --test`가 `test/*.test.js`를 자동으로 찾아 배정·인증·파싱·수집기와 공용 함수 테스트를 실행합니다.
+007에서는 날짜 경계·벌금·회비·REST 요청·오프라인 dry-run 검증 54개를 추가해 총 356개를 검증합니다.
 GitHub Actions도 모든 PR 및 `main` push에서 같은 명령을 실행합니다. Node 20과 Node 26에서 동일하게 동작합니다.
 
 HTTP 서버를 실행한 뒤 아래 순서로 브라우저 UI를 확인합니다.
