@@ -17,8 +17,8 @@ test("공용 설정이 Node와 브라우저에서 모든 필수 키를 제공한
     ]) {
       assert.ok(Object.prototype.hasOwnProperty.call(loaded, key), key);
     }
-    assert.equal(loaded.SUPABASE_URL, "");
-    assert.equal(loaded.SUPABASE_ANON_KEY, "");
+    assert.match(loaded.SUPABASE_URL, /^https:\/\/[a-z]+\.supabase\.co$/);
+    assert.match(loaded.SUPABASE_ANON_KEY, /^eyJ/);
     assert.equal(
       loaded.CAFE.ARTICLE_URL(123, 623),
       "https://cafe.naver.com/f-e/cafes/11367414/articles/123?menuid=623"

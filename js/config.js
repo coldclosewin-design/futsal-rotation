@@ -1,6 +1,6 @@
 const EXICAN_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_URL: "https://ycczxijymewmuijkxgch.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3p4aWp5bWV3bXVpamt4Z2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5ODY4MTIsImV4cCI6MjEwNzU2MjgxMn0.CeePKk9p90Pc0sNhNhI1o56_66mVAdyoYhOqcm5l_9Y",
   TEAM_EMAIL: "team@fcexican.local",
   ADMIN_EMAIL: "admin@fcexican.local",
   FINES: { LATE_VOTE: 5000, NO_SHOW: 10000, LATE: 10000, LATE_KICKOFF: 30000 },
