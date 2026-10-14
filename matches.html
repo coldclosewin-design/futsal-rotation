@@ -268,6 +268,7 @@
           </div>
           <label for="memo-${id}">메모</label><textarea id="memo-${id}" name="memo" rows="2"></textarea>
           <div class="contact-status-actions" aria-label="연락 상태"></div>
+          <p class="match-help">상태 버튼은 누르는 즉시 저장됩니다. 연락처·메모·우선순위는 아래 [저장]을 누르세요.</p>
           <button type="submit" class="primary">저장</button>
           <div class="sms-actions"><button type="button" class="secondary" data-copy>문자 문구 복사</button><a data-sms>문자 앱 열기</a></div>
           <details class="sms-preview"><summary>문자 문구 미리보기</summary><p></p></details>`;
@@ -276,14 +277,19 @@
         const draft = drafts.get(id);
         for (const key of ["phone", "memo", "our_priority", "cost"]) form.elements[key].value = draft[key];
         const statusActions = form.querySelector(".contact-status-actions");
-        for (const [status, label] of [["contacted", "문자 보냄"], ["replied", "답장 옴"], ["confirmed", "확정"], ["rejected", "거절"]]) {
+        for (const [status, label] of [["new", "미연락"], ["contacted", "문자 보냄"], ["replied", "답장 옴"], ["confirmed", "확정"], ["rejected", "거절"]]) {
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = label;
           button.dataset.status = status;
+          if (status === "new") button.className = "secondary";
           button.addEventListener("click", () => {
-            if (status === "confirmed") openConfirmation(row, draft).catch((error) => showToast(error.message));
-            else { draft.contact_status = status; updateDraft(); }
+            if (status === "confirmed") { openConfirmation(row, draft).catch((error) => showToast(error.message)); return; }
+            if (draft.contact_status === status) return;
+            draft.contact_status = status;
+            updateDraft();
+            // 상태는 누르는 즉시 저장한다 (연락처·메모는 [저장] 버튼으로).
+            form.requestSubmit();
           });
           statusActions.appendChild(button);
         }
