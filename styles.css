@@ -742,3 +742,16 @@ button.copy {
 .operations-ledger-frame { width: 100%; height: 680px; border: 1px solid #cbd5e1; border-radius: 10px; }
 #rotation-save { border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px; }
 #rotation-save-message, #rotation-notice { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+
+/* 주간 홈 */
+.home-week { margin: 0; padding: 12px 10px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #1e40af; font-size: 12px; font-weight: 600; white-space: nowrap; overflow-x: auto; }
+.home-flow { margin: 10px 0 18px; color: #64748b; font-size: 12px; text-align: center; }
+.home-page .card { border: 1px solid #edf0f4; }
+.home-page .card h2 { color: #172033; }
+.home-page .home-share { background: #e8f0ff; color: #1d4ed8; margin-top: 14px; font-size: 14px; }
+.home-page .home-share:disabled { opacity: 0.5; cursor: not-allowed; }
+.home-page .home-primary-link { display: block; background: #2563eb; color: #fff; border-radius: 8px; padding: 12px; text-align: center; text-decoration: none; font-weight: 600; }
+.home-page .home-candidate-list li { padding-left: 3px; margin-bottom: 14px; }
+.home-page .home-candidate-list a { display: block; margin-top: 4px; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.home-page #home-member-summary { overflow-wrap: anywhere; }
+.home-page :is(a, button):focus-visible { outline: 2px solid #1d4ed8; outline-offset: 3px; }

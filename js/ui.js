@@ -7,6 +7,7 @@ function renderNav(activeKey) {
     { key: "matches", label: "매칭", href: "matches.html" },
     { key: "rotation", label: "배정표", href: "rotation.html" },
     { key: "ledger", label: "장부", href: "ledger.html" },
+    { key: "member", label: "내 현황", href: "member.html" },
     { key: "rules", label: "회칙", href: "rules.html" },
     { key: "admin", label: "관리", href: "admin.html" }
   ];
