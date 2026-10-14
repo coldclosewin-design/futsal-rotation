@@ -1,30 +1,12 @@
-const { buildSchedule, validateSchedule, formatForKakao, TOTAL_QUARTERS } = require("./rotation.js");
+const { describe, test } = require("node:test");
+const assert = require("node:assert/strict");
+const { buildSchedule, validateSchedule, formatForKakao, TOTAL_QUARTERS } = require("../js/rotation.js");
 
-let pass = 0;
-let fail = 0;
-const failures = [];
-
-function assert(label, condition, detail) {
-  if (condition) {
-    pass++;
-    console.log(`  PASS ${label}`);
-    return;
-  }
-
-  fail++;
-  failures.push({ label, detail });
-  console.log(`  FAIL ${label}${detail ? ` - ${detail}` : ""}`);
-}
-
-function runCase(title, fn) {
-  console.log(`\nCASE ${title}`);
-  try {
-    fn();
-  } catch (error) {
-    fail++;
-    failures.push({ label: `${title} (exception)`, detail: error.message });
-    console.log(`  FAIL exception - ${error.message}`);
-  }
+// 기존 어서션마다 테스트 1개를 등록하여 91개 검증을 개별 결과로 유지합니다.
+function check(label, condition, detail) {
+  test(label, () => {
+    assert.ok(condition, detail || label);
+  });
 }
 
 function spread(values) {
@@ -55,20 +37,20 @@ for (const count of [5, 6, 7, 8, 9, 10, 11, 12]) {
 }
 
 for (const testCase of basicCases) {
-  runCase(`[basic] ${testCase.count} players / ${testCase.format}`, () => {
+  describe(`[basic] ${testCase.count} players / ${testCase.format}`, () => {
     const players = Array.from({ length: testCase.count }, (_, index) => String.fromCharCode(65 + index));
     const schedule = buildSchedule(players, testCase.format);
     const validation = validateSchedule(schedule, players.length, testCase.format);
 
-    assert("validateSchedule.ok", validation.ok, validation.errors.join("; "));
-    assert("GK spread <= 2", countSpread(validation.gkCount, players) <= 2);
+    check("validateSchedule.ok", validation.ok, validation.errors.join("; "));
+    check("GK spread <= 2", countSpread(validation.gkCount, players) <= 2);
 
     const hasRest = schedule.some((quarter) => quarter.rest.length > 0);
     if (hasRest) {
-      assert("Rest spread <= 2", countSpread(validation.restCount, players) <= 2);
+      check("Rest spread <= 2", countSpread(validation.restCount, players) <= 2);
     }
 
-    assert("8 quarters generated", schedule.length === TOTAL_QUARTERS);
+    check("8 quarters generated", schedule.length === TOTAL_QUARTERS);
   });
 }
 
@@ -111,11 +93,11 @@ const dynamicCases = [
 ];
 
 for (const testCase of dynamicCases) {
-  runCase(`[dynamic] ${testCase.title}`, () => {
+  describe(`[dynamic] ${testCase.title}`, () => {
     const schedule = buildSchedule(testCase.players, testCase.format, testCase.qMap);
     const validation = validateSchedule(schedule, testCase.players.length, testCase.format, testCase.qMap);
 
-    assert("validateSchedule.ok", validation.ok, validation.errors.join("; "));
+    check("validateSchedule.ok", validation.ok, validation.errors.join("; "));
 
     for (const player of testCase.partialPlayers) {
       const range = testCase.qMap[player];
@@ -129,25 +111,25 @@ for (const testCase of dynamicCases) {
         }
       }
 
-      assert(`${player} stays within active range`, !appearsOutsideRange);
+      check(`${player} stays within active range`, !appearsOutsideRange);
     }
 
-    assert(
+    check(
       "normalized out spread <= 0.26",
       normalizedOutSpread(validation.gkCount, validation.restCount, testCase.players, testCase.qMap) <= 0.26,
     );
 
     const fullTimers = testCase.players.filter((player) => !testCase.qMap[player]);
-    assert("full-timer GK spread <= 2", countSpread(validation.gkCount, fullTimers) <= 2);
+    check("full-timer GK spread <= 2", countSpread(validation.gkCount, fullTimers) <= 2);
 
     const hasRest = schedule.some((quarter) => quarter.rest.length > 0);
     if (hasRest) {
-      assert("full-timer Rest spread <= 2", countSpread(validation.restCount, fullTimers) <= 2);
+      check("full-timer Rest spread <= 2", countSpread(validation.restCount, fullTimers) <= 2);
     }
   });
 }
 
-runCase("[error] 6 players / 6v6 / A only Q1-Q2", () => {
+describe("[error] 6 players / 6v6 / A only Q1-Q2", () => {
   let threw = false;
   let message = "";
 
@@ -158,28 +140,19 @@ runCase("[error] 6 players / 6v6 / A only Q1-Q2", () => {
     message = error.message;
   }
 
-  assert("throws error", threw);
-  assert("error includes quarter and format", /Q\d.*6v6/.test(message), message);
+  check("throws error", threw);
+  check("error includes quarter and format", /Q\d.*6v6/.test(message), message);
 });
 
-runCase("[format] formatForKakao includes partial-range info", () => {
+describe("[format] formatForKakao includes partial-range info", () => {
   const players = ["A", "B", "C", "D", "E", "F", "G"];
   const qMap = { A: { start: 1, end: 4 } };
   const schedule = buildSchedule(players, "5v5", qMap);
   const text = formatForKakao(schedule, "5v5", players, qMap);
 
-  assert("header exists", text.includes("풋살 배정 (5v5, 7명)"));
-  assert("partial range exists", text.includes("A(Q1~Q4)"));
-  assert("separator exists", text.includes("──────────────"));
-  assert("keeper summary exists", /키퍼 총 횟수:\s/.test(text));
-  assert("rest summary exists", /휴식 총 횟수:\s/.test(text));
+  check("header exists", text.includes("풋살 배정 (5v5, 7명)"));
+  check("partial range exists", text.includes("A(Q1~Q4)"));
+  check("separator exists", text.includes("──────────────"));
+  check("keeper summary exists", /키퍼 총 횟수:\s/.test(text));
+  check("rest summary exists", /휴식 총 횟수:\s/.test(text));
 });
-
-console.log(`\nRESULT ${pass} PASS, ${fail} FAIL`);
-if (fail > 0) {
-  console.log("\nFAILURES");
-  for (const failure of failures) {
-    console.log(`- ${failure.label}${failure.detail ? `: ${failure.detail}` : ""}`);
-  }
-  process.exit(1);
-}
