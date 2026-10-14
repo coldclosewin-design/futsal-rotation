@@ -33,11 +33,13 @@
 ```text
 index.html           FC EXICAN 운영 허브 - 공용 내비, 준비 중 카드 4개
 rotation.html        배정 화면 - 참가자 선택, 부분 참가 설정, 결과 생성
+rules.html           공개 회칙 화면 - 설정 기반 벌금·회비 요약표 및 회칙 전문
 members-admin.html   멤버 관리 화면 - members.json 편집용
 members.json         멤버 목록 데이터
 js/
   config.js          공용 설정 (브라우저 전역 / Node CommonJS)
   ui.js              공용 내비, 토스트, HTML 이스케이프, 원화 표시
+  markdown-lite.js   회칙용 제목·불릿·문단 변환기 (브라우저 / Node)
   rotation.js        배정 알고리즘 및 검증 로직
   parse-title.js     카페 제목 파싱 및 매칭 후보 점수 (브라우저 / Node)
 styles.css           공용 내비·카드 및 기존 배정 UI 스타일
@@ -45,6 +47,7 @@ test/
   rotation.test.js   Node 회귀 테스트 (기존 91개 검증)
   config.test.js     브라우저·Node 공용 설정 검증
   ui.test.js         공용 순수 함수 검증
+  markdown-lite.test.js 회칙 마크다운 변환·중첩·이스케이프 검증
   parse-title.test.js 카페 제목 픽스처·파싱 규칙·후보 점수 검증
 tests.html           브라우저 기반 테스트 화면
 package.json         Node 20 이상, npm test 실행 정의 (의존성 없음)
@@ -52,11 +55,12 @@ package.json         Node 20 이상, npm test 실행 정의 (의존성 없음)
   test.yml           PR 및 main push 시 Node 20으로 npm test 실행
 docs/
   PLAN.md            전체 설계
+  rules.md           공개 회칙 원문 (계좌는 회장에게 문의)
   tasks/             발주서
 AGENTS.md            저장소 작업 규약
 ```
 
-`vote.html`, `matches.html`, `ledger.html`, `member.html`, `rules.html`, `admin.html`과
+`vote.html`, `matches.html`, `ledger.html`, `member.html`, `admin.html`과
 `scripts/`, `supabase/`는 후속 발주서에서 추가합니다. 아직 없는 페이지도 공용 내비에는 링크가 표시됩니다.
 
 ## 로컬에서 실행
