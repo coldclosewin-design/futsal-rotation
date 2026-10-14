@@ -1,0 +1,22 @@
+name: Cron
+
+on:
+  schedule:
+    - cron: "0 0-15,21-23 * * *"   # KST 06:00~24:00 매시 정각 (UTC 21~23, 0~15)
+  workflow_dispatch:
+
+permissions: { contents: read }
+concurrency: { group: cron, cancel-in-progress: false }
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/scrape-cafe.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
