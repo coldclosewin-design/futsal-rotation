@@ -81,6 +81,46 @@ Supabase 설정 후 홈에 처음 접속하면 팀 PIN 입력창이 표시되며
 인증 바의 **회장 로그인**에서 비밀번호를 입력하면 팀 세션을 로그아웃한 뒤 회장 세션으로 전환하며, **로그아웃**하면 팀 PIN을 다시 입력해야 합니다.
 `js/config.js`의 Supabase URL 또는 anon key가 비어 있으면 인증 바와 설정 전 안내만 표시되며, 데이터 기능은 아직 동작하지 않습니다.
 
+## 카페 수집기
+
+Node 20 이상에서 네이버 카페 게시판 4곳의 **글 목록만** 읽고 제목을 파싱합니다. 메뉴와 카페 ID는
+`js/config.js`의 `CAFE` 설정을 사용하며, 외부 패키지 설치는 필요하지 않습니다.
+
+```bash
+# 오프라인 확인: 네이버와 Supabase에 접속하지 않음
+node scripts/scrape-cafe.js --dry-run --input test/fixtures/api-menu-623.json --menu 623
+
+# 온라인 확인: 기본 4개 메뉴 × 2페이지, Supabase 저장 없음
+node scripts/scrape-cafe.js --dry-run
+node scripts/scrape-cafe.js --dry-run --menus 623,625 --pages 1
+
+# 환경변수 설정 후 실제 수집 및 저장
+node scripts/scrape-cafe.js
+```
+
+| 옵션 | 동작 |
+|---|---|
+| `--dry-run` | 점수 내림차순 표와 메뉴별 요약만 출력. Supabase 환경변수 불필요 |
+| `--input <file>` | JSON 응답 파일 1개를 메뉴 1개 분량으로 사용. 네트워크 차단을 보장하도록 `--dry-run`과 함께 사용 |
+| `--menu <id>` | 파일 입력의 메뉴 ID와 이름 지정. 생략하면 첫 글의 `menuId` 사용, 빈 목록은 필수 |
+| `--menus <ids>` | 수집 메뉴 제한(쉼표 구분). 기본값은 `CAFE.MENUS`의 전체 메뉴 |
+| `--pages <1\|2>` | 메뉴당 페이지 수. 기본 2페이지, 페이지당 30건. 파일 입력에서는 적용하지 않음 |
+
+실제 저장에는 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`가 모두 필요합니다.
+GitHub 저장소의 Actions Secrets에도 **동일한 이름**으로 등록하며, 값은 소스나 실행 인자에 넣지 않습니다.
+`.github/workflows/cron.yml`은 KST 06:00~24:00 매시 정각에 실행되도록 예약되고,
+Actions의 **Cron → Run workflow**로 수동 실행할 수 있습니다. 작업 제한은 10분이며 동시 실행은 직렬화합니다.
+
+수집기는 메뉴별로 처리하며 하나가 실패해도 나머지 메뉴를 계속합니다. 하나 이상 성공하면 종료코드 0,
+모든 메뉴 실패는 1, 필수 환경변수 누락이나 옵션 오류는 2입니다. 파일을 읽거나 해석하지 못하면 1입니다.
+요약의 `fetched`는 수신한 글 수, `parse_ok`·`closed`는 중복 제거 후 글 수, `upserted`는 저장 완료 수입니다
+(`--dry-run`은 0). 페이지 간 같은 글은 앞 페이지 값을 한 번만 반영합니다.
+
+저장은 `article_id` 기준으로 100행씩 upsert하며, 수집기 소유 컬럼만 전송합니다.
+`first_seen_at`, `phone`, `contact_status`, `memo`, `our_priority`, `admin_updated_at`, `created_at`은
+본문에서 제외해 최초 기록과 회장 입력값을 보존합니다. 키와 토큰은 출력하지 않습니다.
+자동 테스트는 모두 오프라인으로 실행합니다. 실제 네이버 접속과 Supabase upsert는 Claude가 별도 검증합니다.
+
 ## 배포
 
 GitHub Pages 기준으로 다음 순서로 배포할 수 있습니다.
