@@ -83,9 +83,8 @@ if (typeof window !== "undefined") {
       if (!connection) throw new Error("Supabase 설정 전입니다. 데이터 기능은 아직 동작하지 않습니다.");
       switchingAccount = true;
       try {
-        if (account === "admin" && await getRole() === "team") {
-          await authRequest(() => connection.auth.signOut());
-        }
+        // signInWithPassword가 세션을 교체하므로 사전 signOut은 하지 않는다.
+        // (회장 비밀번호를 틀려도 팀 세션이 유지된다)
         const data = await authRequest(() => connection.auth.signInWithPassword({
           email: account === "admin" ? config().ADMIN_EMAIL : config().TEAM_EMAIL,
           password
@@ -139,6 +138,7 @@ if (typeof window !== "undefined") {
         <input id="auth-password" name="password" type="password" autocomplete="current-password" required>
         <p class="auth-error" id="auth-error" role="alert" aria-live="polite"></p>
         <button class="primary" type="submit">확인</button>
+        ${account === "admin" ? '<button class="secondary" type="button" data-cancel>취소</button>' : ""}
       `;
       const input = form.querySelector("input");
       const errorMessage = form.querySelector(".auth-error");
@@ -174,6 +174,13 @@ if (typeof window !== "undefined") {
         if (!form.contains(event.target)) input.focus();
       }
       document.addEventListener("focusin", keepFocus);
+      const cancel = form.querySelector("[data-cancel]");
+      if (cancel) {
+        cancel.addEventListener("click", async () => {
+          if (modal.busy) return;
+          modal.finish(await getRole());
+        });
+      }
       backdrop.addEventListener("click", (event) => {
         if (event.target === backdrop) input.focus();
       });
@@ -181,8 +188,9 @@ if (typeof window !== "undefined") {
         if (event.key === "Escape") event.preventDefault();
         if (event.key === "Tab") {
           event.preventDefault();
-          if (document.activeElement === input && !submit.disabled) submit.focus();
-          else input.focus();
+          const cycle = [input, submit, cancel].filter((element) => element && !element.disabled);
+          const index = cycle.indexOf(document.activeElement);
+          cycle[(index + (event.shiftKey ? cycle.length - 1 : 1)) % cycle.length].focus();
         }
       });
       form.addEventListener("submit", async (event) => {
