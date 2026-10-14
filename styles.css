@@ -700,3 +700,45 @@ button.copy {
   .ledger-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ledger-tiles strong { font-size: 20px; }
 }
+/* 관리 · 개인 현황 · 경기 기록 */
+.operations-page { max-width: 100%; }
+.operations-tabs { display: flex; gap: 8px; margin: 16px 0; }
+.operations-tabs button { margin: 0; flex: 1; width: auto; background: #edf2f7; color: #334155; }
+.operations-tabs button[aria-pressed="true"] { background: #1d4ed8; color: #fff; }
+.operations-scroll { max-width: 100%; overflow-x: auto; margin: 12px 0; }
+.operations-table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: 13px; }
+.operations-table th, .operations-table td { text-align: left; padding: 10px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.operations-table th { background: #f1f5f9; }
+.operations-table button { width: auto; white-space: nowrap; font-size: 13px; margin: 0; }
+.operations-inactive { color: #64748b; background: #f1f5f9; }
+.operations-hint { color: #64748b; font-size: 13px; line-height: 1.6; }
+.operations-poll, .operations-match { border: 1px solid #dbe3ed; border-radius: 12px; padding: 14px; margin-top: 16px; overflow-wrap: anywhere; }
+.operations-match h4 { font-size: 16px; margin: 0 0 8px; }
+.operations-form { display: grid; gap: 10px; }
+.operations-form label { display: block; font-size: 14px; line-height: 1.6; }
+.operations-form input:not([type="checkbox"]), .operations-form select, .operations-form textarea, #member-select, #rotation-match { display: block; width: 100%; min-width: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; background: #fff; color: #172033; }
+.operations-form textarea { min-height: 72px; resize: vertical; }
+.operations-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.operations-dialog { width: calc(100% - 32px); max-width: 460px; max-height: calc(100dvh - 32px); overflow-y: auto; border: 0; border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px #0f172a40; }
+.operations-dialog::backdrop { background: #0f172a80; }
+.operations-dialog [role="alert"] { color: #b91c1c; font-size: 14px; }
+.operations-attendance { margin: 16px 0; }
+.operations-attendance summary { font-weight: 700; cursor: pointer; padding: 10px 0; }
+.operations-attendance fieldset { border: 1px solid #e2e8f0; border-radius: 8px; margin: 12px 0; min-width: 0; }
+.operations-attendance legend { font-weight: 600; }
+.operations-radios { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.operations-radios label { display: flex; align-items: center; min-height: 36px; gap: 4px; font-size: 13px; }
+.operations-actions { display: flex; gap: 8px; }
+.operations-actions button { flex: 1; padding: 10px 6px; font-size: 13px; }
+.operations-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.operations-stats div { background: #f5f7fa; padding: 12px; border-radius: 10px; }
+.operations-stats dt { font-size: 13px; color: #64748b; }
+.operations-stats dd { margin: 5px 0 0; font-size: 21px; font-weight: 700; }
+.operations-stats .operations-unpaid { color: #b91c1c; background: #fff1f2; }
+.operations-number { font-size: 32px; font-weight: 700; color: #1d4ed8; margin: 12px 0; }
+.operations-history { list-style: none; padding: 0; }
+.operations-history li { padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
+.operations-history time { color: #64748b; font-size: 13px; }
+.operations-ledger-frame { width: 100%; height: 680px; border: 1px solid #cbd5e1; border-radius: 10px; }
+#rotation-save { border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px; }
+#rotation-save-message, #rotation-notice { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }

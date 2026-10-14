@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>팀 관리 · FC EXICAN</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>팀 관리</h1>
+  <main class="operations-page">
+    <div id="admin-identity"></div>
+    <section id="admin-gate" class="section"><p id="admin-message" role="status">권한을 확인하는 중입니다…</p><button id="admin-login" type="button" hidden>회장 로그인</button><button id="admin-retry" type="button" hidden>다시 불러오기</button></section>
+    <div id="admin-content"></div>
+  </main>
+  <dialog id="admin-dialog" class="operations-dialog" aria-labelledby="dialog-title"></dialog>
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ledger-rules.js"></script>
+  <script src="js/data-ledger.js"></script>
+  <script src="js/attendance-rules.js"></script>
+  <script src="js/data-admin.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      renderNav("admin");
+      const data = ExicanData, rules = ExicanAttendance, e = escapeHtml;
+      const get = (id) => document.getElementById(id);
+      const demo = data.mode() === "demo";
+      const today = () => ExicanRules.kstDate(new Date());
+      const dateAgo = (days) => new Date(Date.parse(`${today()}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10);
+      const dialog = get("admin-dialog");
+      let members = [], polls = [], votes = [], matches = [], attendances = new Map();
+      let role = "anon", tab = "members", busy = false, version = 0, allowed = false;
+      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+      const nameOf = (id) => members.find((person) => person.id === id)?.name || id;
+      const option = (value, label, selected) => `<option value="${e(value)}" ${value === selected ? "selected" : ""}>${e(label)}</option>`;
+
+      function clearPrivate() {
+        version += 1;
+        allowed = false;
+        members = []; polls = []; votes = []; matches = []; attendances.clear();
+        get("admin-content").textContent = "";
+        dialog.close(); dialog.textContent = "";
+      }
+
+      function modal(html, submit) {
+        dialog.innerHTML = html;
+        dialog.querySelector("[data-close]").onclick = () => { if (!busy) dialog.close(); };
+        if (submit) dialog.querySelector("form").onsubmit = (event) => { event.preventDefault(); submit(event.target); };
+        dialog.showModal();
+      }
+
+      function setBusy(value) {
+        busy = value;
+        document.querySelectorAll("#admin-content button, #admin-content input, #admin-content select, #admin-content textarea, #admin-dialog button, #admin-dialog input, #admin-identity button").forEach((control) => {
+          if (value) { control.dataset.wasDisabled = String(control.disabled); control.disabled = true; }
+          else if (control.dataset.wasDisabled !== undefined) { control.disabled = control.dataset.wasDisabled === "true"; delete control.dataset.wasDisabled; }
+        });
+      }
+
+      async function write(operation) {
+        if (busy) return;
+        setBusy(true);
+        try {
+          const message = await operation();
+          dialog.close();
+          await refresh();
+          showToast(message || "저장했습니다");
+        } catch (error) {
+          const output = dialog.querySelector("[role=alert]");
+          if (output) output.textContent = error.message;
+          showToast(error.message);
+        } finally { setBusy(false); }
+      }
+
+      function render() {
+        if (!allowed) return;
+        get("admin-content").innerHTML = `<div class="operations-tabs" aria-label="관리 항목">${[["members", "멤버"], ["polls", "투표"], ["matches", "매치"]].map(([key, label]) => `<button type="button" data-tab="${key}" aria-pressed="${tab === key}">${label}</button>`).join("")}</div><section class="section" id="admin-panel"></section>`;
+        const panel = get("admin-panel");
+        if (tab === "members") {
+          panel.innerHTML = `<h2>멤버</h2><p class="operations-hint">members.json은 오프라인 폴백용입니다. 이 화면의 변경은 팀 데이터에 반영됩니다.</p><button type="button" data-new-member>새 멤버</button><p class="operations-hint">표를 좌우로 밀어 연락처와 계좌를 확인하세요.</p><div class="operations-scroll" tabindex="0" role="region" aria-label="멤버 목록"><table class="operations-table"><thead><tr>${["이름", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌", "편집"].map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${members.map((person) => `<tr class="${person.active ? "" : "operations-inactive"}"><th scope="row">${e(person.name)}</th><td>${person.active ? "활동" : "비활성"}</td><td>${person.is_president ? "회장" : "—"}</td><td>${e(person.joined_at || "—")}</td><td>${e(person.injury_from || "—")} ~ ${e(person.injury_to || "—")}</td><td>${e(person.phone || "—")}</td><td>${e(person.bank_account || "—")}</td><td><button type="button" data-edit-member="${e(person.id)}">${e(person.name)} 편집</button></td></tr>`).join("")}</tbody></table></div>`;
+        } else if (tab === "polls") {
+          panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>다음 투표 생성</button>${polls.map((poll) => {
+            const ballot = votes.filter((vote) => vote.poll_id === poll.id);
+            const summary = ExicanRules.attendanceSummary(ballot, members);
+            const status = { scheduled: "예정", open: "진행 중", closed: "마감", cancelled: "취소" }[ExicanRules.pollStatus(poll, new Date().toISOString())];
+            return `<article class="operations-poll"><h3>${e(poll.match_date)} · ${status}</h3><p>참석 ${summary.attend.length} · 불참 ${summary.absent.length} · 미투표 ${summary.pending.length}</p><label><input type="checkbox" data-cancel-poll="${e(poll.id)}" ${poll.cancelled ? "checked" : ""}> 투표 취소</label><details><summary>멤버별 투표 보기</summary><ul>${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
+              const vote = ballot.find((row) => row.member_id === person.id);
+              return `<li>${e(person.name)} · ${vote ? vote.choice === "attend" ? "참석" : "불참" : "미투표"}${vote?.is_late ? " · 지각 투표" : ""}</li>`;
+            }).join("")}</ul></details></article>`;
+          }).join("") || "<p>투표가 없습니다.</p>"}`;
+        } else {
+          panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<a href="ledger.html">장부에서 기록 확인 →</a>'}${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<h3>${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}`).join("")}<div id="admin-ledger-preview"></div>`;
+        }
+      }
+
+      function matchCard(match) {
+        const saved = attendances.get(match.id) || [];
+        const ballot = votes.filter((vote) => vote.poll_id === match.poll_id);
+        const people = members.filter((person) => person.active || saved.some((row) => row.member_id === person.id));
+        return `<article class="operations-match" data-match="${e(match.id)}"><h4>${e(match.match_date)} ${e(match.start_time?.slice(0, 5) || "")} · ${e(match.venue || "구장 미정")}</h4><p>${e(match.opponent || "상대 미정")} · ${e(match.format || "포맷 미정")} · ${formatWon(match.cost)} <span class="poll-status">${rules.MATCH_LABELS[match.status]}</span></p>
+          <form data-match-form="${e(match.id)}" class="operations-form"><label>상태<select name="status">${Object.entries(rules.MATCH_LABELS).map(([value, label]) => option(value, label, match.status)).join("")}</select></label><div class="operations-pair"><label>우리 스코어<input name="score_us" type="number" min="0" max="2147483647" value="${match.score_us ?? ""}" ${match.status === "played" ? "required" : ""}></label><label>상대 스코어<input name="score_them" type="number" min="0" max="2147483647" value="${match.score_them ?? ""}" ${match.status === "played" ? "required" : ""}></label></div><label>구장비<input name="cost" type="number" min="0" max="2147483647" required value="${match.cost}"></label><label>메모<textarea name="memo">${e(match.memo || "")}</textarea></label><button type="submit">매치 저장</button></form>
+          ${match.status === "played" ? `<details class="operations-attendance"><summary>출석 기록</summary><form data-attendance-form="${e(match.id)}">${people.map((person) => {
+            const existing = saved.find((row) => row.member_id === person.id);
+            const selected = existing?.status || (ballot.some((vote) => vote.member_id === person.id && vote.choice === "attend") ? "present" : "");
+            return `<fieldset><legend>${e(person.name)}</legend><div class="operations-radios">${Object.entries({ ...rules.ATTENDANCE_LABELS, "": "해당 없음" }).map(([value, label]) => `<label><input type="radio" name="${e(person.id)}" value="${value}" ${selected === value ? "checked" : ""} ${existing && !value ? "disabled" : ""}>${label}</label>`).join("")}</div></fieldset>`;
+          }).join("")}<p class="operations-hint">이미 저장된 출석은 ‘사유 불참’ 등 다른 상태로 정정하세요. ‘해당 없음’은 새 기록을 추가하지 않습니다.</p><button type="submit">출석 저장</button></form><button type="button" data-fines="${e(match.id)}">출석 벌금 생성</button></details>` : ""}
+          <div class="operations-actions"><button type="button" data-exempt="${e(match.id)}">회장 면제 기록</button><button type="button" data-venue="${e(match.id)}" ${match.cost <= 0 ? "disabled" : ""}>구장비 기록</button></div></article>`;
+      }
+
+      async function refresh() {
+        const request = ++version;
+        const liveAdmin = !demo && await ExicanAuth.getRole() === "admin";
+        const people = demo || liveAdmin ? await data.members({ activeOnly: false }) : [];
+        const admin = demo ? people.some((person) => person.id === ExicanMember.getId() && person.active && person.is_president) : liveAdmin;
+        if (request !== version) return;
+        if (!admin) {
+          clearPrivate();
+          get("admin-gate").hidden = false;
+          get("admin-message").textContent = "회장 로그인이 필요합니다";
+          get("admin-login").hidden = false;
+          return;
+        }
+        const [ballots, games] = await Promise.all([data.polls({ from: dateAgo(56) }), data.matches()]);
+        const [ballotVotes, records] = await Promise.all([data.votesByPolls([...new Set([...ballots.map((poll) => poll.id), ...games.map((match) => match.poll_id).filter(Boolean)])]), Promise.all(games.map((match) => data.attendance(match.id)))]);
+        if (request !== version) return;
+        members = people; polls = ballots; votes = ballotVotes; matches = games;
+        attendances = new Map(games.map((match, index) => [match.id, records[index]]));
+        allowed = true;
+        get("admin-gate").hidden = true;
+        render();
+      }
+
+      function editMember(id) {
+        const person = members.find((row) => row.id === id) || { active: true, joined_at: today() };
+        modal(`<form class="operations-form"><h2 id="dialog-title">${id ? "멤버 편집" : "새 멤버"}</h2><label>이름<input name="name" required value="${e(person.name || "")}"></label><label><input name="active" type="checkbox" ${person.active ? "checked" : ""}> 활동</label><label><input name="is_president" type="checkbox" ${person.is_president ? "checked" : ""}> 회장</label>${[["joined_at", "가입일", "date"], ["injury_from", "부상 시작일", "date"], ["injury_to", "부상 종료일", "date"], ["phone", "연락처", "tel"], ["bank_account", "계좌", "text"]].map(([key, label, type]) => `<label>${label}<input name="${key}" type="${type}" value="${e(person[key] || "")}"></label>`).join("")}<p role="alert"></p><button type="submit">멤버 저장</button><button type="button" class="secondary" data-close>취소</button></form>`, (form) => {
+          const values = Object.fromEntries(new FormData(form));
+          const row = { ...values, active: form.elements.active.checked, is_president: form.elements.is_president.checked };
+          for (const key of ["joined_at", "injury_from", "injury_to", "phone", "bank_account"]) row[key] = values[key] || null;
+          if (id) row.id = id;
+          write(async () => { await data.upsertMember(row); return "멤버를 저장했습니다"; });
+        });
+      }
+
+      function previewRows(rows, title, noun) {
+        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="submit" ${rows.length ? "" : "disabled"}>확인 · 기록</button><button type="button" class="secondary" data-close>취소</button></form>`, () => write(async () => {
+          let count = 0, duplicate = 0;
+          for (const row of rows) {
+            try { await data.addLedger(row); count += 1; }
+            catch (error) { if (String(error.code) === "23505") duplicate += 1; else throw new Error(`${noun} ${count}건 기록 후 중단: ${error.message}. 다시 시도하면 중복은 건너뜁니다.`); }
+          }
+          await data.ledgerRange();
+          return `${noun} ${count}건 기록, ${duplicate}건 이미 있음`;
+        }));
+      }
+
+      async function ledgerPreview() {
+        const response = await fetch("ledger.html");
+        if (!response.ok) throw new Error("장부를 불러오지 못했습니다");
+        const html = await response.text();
+        const frame = document.createElement("iframe");
+        frame.dataset.adminLedger = "true";
+        frame.title = "ledger.html 데모 장부 · 현재 관리 기록";
+        frame.className = "operations-ledger-frame";
+        const scripts = '<script src="js/attendance-rules.js"><\/script><script src="js/data-admin.js"><\/script>';
+        frame.srcdoc = html.replace("<head>", `<head><base href="${e(new URL("ledger.html?demo=1", location.href).href)}">`).replace(/<script>\s*document.addEventListener/, `${scripts}<script>document.addEventListener`);
+        get("admin-ledger-preview").replaceChildren(frame);
+        frame.scrollIntoView({ behavior: "smooth" });
+      }
+
+      get("admin-content").addEventListener("click", async (event) => {
+        const button = event.target.closest("button");
+        if (!button || busy || !allowed) return;
+        try {
+          if (button.dataset.tab) { tab = button.dataset.tab; render(); return; }
+          if (button.hasAttribute("data-new-member")) editMember();
+          if (button.dataset.editMember) editMember(button.dataset.editMember);
+          if (button.hasAttribute("data-create-poll")) write(async () => {
+            const all = await data.polls();
+            let date = ExicanRules.nextSaturday(today());
+            while (all.some((poll) => poll.match_date === date)) date = new Date(Date.parse(`${date}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10);
+            await data.createPoll(date); return `${date} 투표를 생성했습니다`;
+          });
+          const id = button.dataset.fines || button.dataset.exempt || button.dataset.venue;
+          const match = matches.find((row) => row.id === id);
+          if (button.dataset.fines) previewRows(rules.attendanceFines(match, await data.attendance(id), await data.votes(match.poll_id), EXICAN_CONFIG), "출석 벌금 미리보기", "벌금");
+          if (button.dataset.exempt) {
+            const president = members.find((person) => person.active && person.is_president);
+            if (!president) throw new Error("활동 중인 회장 멤버가 없습니다");
+            previewRows([ExicanLedgerRules.presidentExemptRow(match, president.id, EXICAN_CONFIG)], "회장 면제 기록", "면제");
+          }
+          if (button.dataset.venue) previewRows([{ member_id: null, category: "venue_fee", amount: -match.cost, ref_match_id: id, entry_date: match.match_date, settled: true, note: "구장 대관료" }], "구장비 기록", "구장비");
+          if (button.hasAttribute("data-ledger-preview")) await ledgerPreview();
+        } catch (error) { showToast(error.message); }
+      });
+
+      get("admin-content").addEventListener("change", (event) => {
+        const input = event.target;
+        if (input.dataset.cancelPoll) write(async () => { await data.cancelPoll(input.dataset.cancelPoll, input.checked); return "투표 상태를 저장했습니다"; });
+        if (input.name === "status") {
+          for (const key of ["score_us", "score_them"]) input.form.elements[key].required = input.value === "played";
+        }
+      });
+      get("admin-content").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const values = Object.fromEntries(new FormData(form));
+        if (form.dataset.matchForm) write(async () => {
+          await data.updateMatch(form.dataset.matchForm, { status: values.status, score_us: values.score_us === "" ? null : Number(values.score_us), score_them: values.score_them === "" ? null : Number(values.score_them), cost: Number(values.cost), memo: values.memo });
+          return "매치를 저장했습니다";
+        });
+        if (form.dataset.attendanceForm) write(async () => {
+          await data.saveAttendance(form.dataset.attendanceForm, Object.entries(values).filter(([, status]) => status).map(([member_id, status]) => ({ member_id, status })));
+          return "출석을 저장했습니다";
+        });
+      });
+
+      async function selectName() {
+        clearPrivate();
+        ExicanMember.clear();
+        const person = await ExicanMember.ensure(await data.members());
+        ExicanMember.renderBadge(get("admin-identity"), person, selectName);
+        await refresh();
+      }
+      get("admin-login").onclick = () => {
+        if (demo) { selectName().catch((error) => showToast(error.message)); return; }
+        modal('<form class="operations-form"><h2 id="dialog-title">회장 로그인</h2><label>회장 비밀번호<input name="password" type="password" autocomplete="current-password" required></label><p role="alert"></p><button type="submit">로그인</button><button type="button" data-close>취소</button></form>', (form) => write(async () => {
+          role = await ExicanAuth.loginAdmin(form.elements.password.value);
+          form.elements.password.value = "";
+          return "회장으로 로그인했습니다";
+        }));
+      };
+      dialog.addEventListener("cancel", (event) => { if (busy) event.preventDefault(); });
+      async function start() {
+        get("admin-retry").hidden = true;
+        try {
+          if (demo) {
+            const person = await ExicanMember.ensure(await data.members());
+            ExicanMember.renderBadge(get("admin-identity"), person, selectName);
+          } else role = await ExicanAuth.renderAuthBar();
+          await refresh();
+        } catch (error) {
+          clearPrivate();
+          get("admin-gate").hidden = false;
+          get("admin-message").textContent = error.message;
+          get("admin-retry").hidden = false;
+        }
+      }
+      get("admin-retry").onclick = start;
+      if (!demo) await ExicanAuth.onAuthChange(async () => { clearPrivate(); await start(); });
+      await start();
+    });
+  </script>
+</body>
+</html>

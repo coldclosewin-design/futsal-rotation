@@ -78,7 +78,7 @@ test("벌금 본문·충돌 컬럼·14일 조회 범위가 발주서와 같다",
 });
 
 test("마감 시각 당일 경계까지는 벌금을 요청하지 않는다", async () => {
-  const context = harness({ now: fixture.polls[0].closes_at, polls: fixture.polls });
+  const context = harness({ now: fixture.polls[0].closes_at, polls: [fixture.polls[0]] });
   assert.equal(await main([], context.deps), 0);
   assert.equal(context.calls.filter((call) => call.rows?.[0]?.category === "fine_late_vote").length, 0);
 });

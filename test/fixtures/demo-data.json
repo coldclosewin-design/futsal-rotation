@@ -13,8 +13,19 @@
     { "id": "m11", "name": "한상훈", "active": true, "is_president": false },
     { "id": "m12", "name": "전준영", "active": true, "is_president": false }
   ],
-  "polls": [{ "id": "demo-poll-1", "match_date": "2026-10-17", "opens_at": "2026-10-11T13:00:00+09:00", "closes_at": "2026-10-12T13:00:00+09:00", "cancelled": false }],
+  "polls": [
+    { "id": "demo-poll-1", "match_date": "2026-10-17", "opens_at": "2026-10-11T13:00:00+09:00", "closes_at": "2026-10-12T13:00:00+09:00", "cancelled": false },
+    { "id": "demo-poll-past", "match_date": "2026-10-10", "opens_at": "2026-10-04T13:00:00+09:00", "closes_at": "2026-10-05T13:00:00+09:00", "cancelled": false }
+  ],
   "poll_votes": [
+    { "poll_id": "demo-poll-past", "member_id": "m01", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m02", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m03", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m04", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m05", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m08", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m09", "choice": "attend", "is_late": false },
+    { "poll_id": "demo-poll-past", "member_id": "m10", "choice": "attend", "is_late": false },
     { "poll_id": "demo-poll-1", "member_id": "m01", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
     { "poll_id": "demo-poll-1", "member_id": "m02", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
     { "poll_id": "demo-poll-1", "member_id": "m03", "choice": "attend", "is_late": false, "updated_at": "2026-10-12T12:00:00+09:00" },
@@ -281,6 +292,11 @@
       "poll_id": "demo-poll-1",
       "arranged_by": "m03",
       "memo": null
+    },
+    {
+      "id": "demo-ledger-match-1", "match_date": "2026-10-10", "start_time": "08:00", "end_time": "10:00",
+      "venue": "도봉풋살장", "opponent": "데모 상대팀", "format": "6v6", "cost": 60000,
+      "status": "played", "score_us": 4, "score_them": 3, "poll_id": "demo-poll-past", "arranged_by": "m03", "memo": null
     }
   ],
   "ledger": [
@@ -302,6 +318,25 @@
     { "id": 16, "entry_date": "2026-10-10", "member_id": null, "category": "venue_fee", "amount": -60000, "ref_match_id": "demo-ledger-match-1", "settled": true, "note": "구장 대관료" },
     { "id": 17, "entry_date": "2026-10-10", "member_id": "m11", "category": "snack", "amount": -8000, "ref_match_id": "demo-ledger-match-1", "settled": false, "note": "물2 음료1" },
     { "id": 18, "entry_date": "2026-10-03", "member_id": "m03", "category": "president_exempt", "amount": -7500, "ref_match_id": "demo-ledger-match-2", "settled": false, "note": "공식 경기 운영 회장 면제" }
+  ],
+  "match_attendance": [
+    { "match_id": "demo-ledger-match-1", "member_id": "m01", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m02", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m03", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m04", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m05", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m08", "status": "present" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m09", "status": "late" },
+    { "match_id": "demo-ledger-match-1", "member_id": "m10", "status": "no_show" }
+  ],
+  "rotation_history": [
+    { "match_id": "demo-ledger-match-1", "member_id": "m01", "active_quarters": 8, "gk_count": 2, "rest_count": 1, "out_quarters": [1, 7, 8] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m02", "active_quarters": 8, "gk_count": 1, "rest_count": 2, "out_quarters": [1, 2, 8] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m03", "active_quarters": 8, "gk_count": 1, "rest_count": 1, "out_quarters": [2, 3] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m04", "active_quarters": 8, "gk_count": 1, "rest_count": 1, "out_quarters": [3, 4] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m05", "active_quarters": 8, "gk_count": 1, "rest_count": 1, "out_quarters": [4, 5] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m08", "active_quarters": 8, "gk_count": 1, "rest_count": 1, "out_quarters": [5, 6] },
+    { "match_id": "demo-ledger-match-1", "member_id": "m09", "active_quarters": 8, "gk_count": 1, "rest_count": 1, "out_quarters": [6, 7] }
   ],
   "snack_claims": [
     { "id": 1, "match_id": "demo-ledger-match-1", "buyer_id": "m11", "amount": 8000, "items": "물2 음료1", "status": "approved", "created_at": "2026-10-10T10:00:00+09:00" },
