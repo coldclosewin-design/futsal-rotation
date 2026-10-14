@@ -63,7 +63,7 @@
     const [year, month] = monthStr.split("-").map(Number);
     const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
     return members.filter((member) => member.active).flatMap((member) => {
-      const common = { member_id: member.id, entry_date: start };
+      const common = { member_id: member.id, entry_date: start, period: monthStr };
       const rows = [{ ...common, category: "dues", amount: config.DUES_MONTHLY, note: `${month}월 회비` }];
       const { injury_from: from, injury_to: to } = member;
       // 시작일과 종료일을 모두 포함한 전체 부상 기간이 4주 이상이고 해당 월과 겹치면 면제한다.

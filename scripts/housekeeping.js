@@ -40,6 +40,7 @@ async function main(argv = process.argv.slice(2), {
 
     const existing = await rest.select("polls", { match_date: `eq.${matchDate}`, order: "id.asc" });
     if (existing.length) report("poll: exists");
+    else if (new Date(nowIso) > new Date(window.closes_at)) report(`poll: window passed (${matchDate}), skip`);
     else if (new Date(nowIso) >= new Date(window.opens_at)) {
       await write("polls", [{ match_date: matchDate, ...window }], "match_date");
       report(`poll: ${dryRun ? "would create" : "created"} ${matchDate}`);
@@ -57,9 +58,13 @@ async function main(argv = process.argv.slice(2), {
       lateRows += rows.length;
     }
     report(`late_vote: ${lateRows} rows (${dryRun ? "planned" : "inserted"} ≤${lateRows})`);
-    const dues = monthlyDuesRows(members, month, config);
-    await write("ledger", dues, "member_id,category,entry_date");
-    report(`dues: ${dues.length} rows${dryRun ? " (planned)" : ""}`);
+    if (config.LEDGER_START_MONTH && month < config.LEDGER_START_MONTH) {
+      report(`dues: skipped (before ${config.LEDGER_START_MONTH})`);
+    } else {
+      const dues = monthlyDuesRows(members, month, config);
+      await write("ledger", dues, "member_id,category,period");
+      report(`dues: ${dues.length} rows${dryRun ? " (planned)" : ""}`);
+    }
     return 0;
   } catch (failure) {
     error(redact(failure.message, key));

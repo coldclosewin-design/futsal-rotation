@@ -52,13 +52,17 @@ test("해당 토요일 투표가 이미 있으면 생성하지 않는다", async
   assert.ok(context.logs.includes("poll: exists"));
 });
 
-for (const [now, expected] of [
-  ["2026-10-17T23:59:59+09:00", "2026-10-17"],
-  ["2026-10-18T13:00:00+09:00", "2026-10-24"]
-]) test(`토요일 경계 ${now} → ${expected}`, async () => {
-  const context = harness({ now });
+test("투표 창(월 13:00)이 이미 지났으면 소급 생성하지 않는다", async () => {
+  const context = harness({ now: "2026-10-17T23:59:59+09:00" });
   assert.equal(await main([], context.deps), 0);
-  assert.equal(context.calls.find((call) => call.table === "polls" && call.method === "POST").rows[0].match_date, expected);
+  assert.equal(context.calls.filter((call) => call.table === "polls" && call.method === "POST").length, 0);
+  assert.ok(context.logs.includes("poll: window passed (2026-10-17), skip"));
+});
+
+test("일요일 13:00 이후에는 다음 토요일 투표를 생성한다", async () => {
+  const context = harness({ now: "2026-10-18T13:00:00+09:00" });
+  assert.equal(await main([], context.deps), 0);
+  assert.equal(context.calls.find((call) => call.table === "polls" && call.method === "POST").rows[0].match_date, "2026-10-24");
 });
 
 test("벌금 본문·충돌 컬럼·14일 조회 범위가 발주서와 같다", async () => {
@@ -92,12 +96,20 @@ test("취소·14일 초과 투표는 제외하고 14일 경계는 포함한다",
   assert.ok(inserts[0].rows.every((row) => row.ref_poll_id === "boundary"));
 });
 
-test("월회비 본문과 on_conflict는 월별 멱등 키를 사용한다", async () => {
-  const context = harness();
+test("LEDGER_START_MONTH 이전 달에는 회비 행을 만들지 않는다", async () => {
+  const context = harness({ now: "2026-10-11T13:00:00+09:00" });
+  assert.equal(await main([], context.deps), 0);
+  assert.equal(context.calls.filter((call) => call.rows?.[0]?.category === "dues").length, 0);
+  assert.ok(context.logs.includes(`dues: skipped (before ${config.LEDGER_START_MONTH})`));
+});
+
+test("월회비 본문과 on_conflict는 월별 멱등 키(period)를 사용한다", async () => {
+  const context = harness({ now: "2026-11-08T13:00:00+09:00" });
   assert.equal(await main([], context.deps), 0);
   const insert = context.calls.find((call) => call.table === "ledger" && call.rows?.[0]?.category === "dues");
-  assert.deepEqual(insert.rows, monthlyDuesRows(fixture.members, "2026-10", config));
-  assert.equal(insert.endpoint.searchParams.get("on_conflict"), "member_id,category,entry_date");
+  assert.deepEqual(insert.rows, monthlyDuesRows(fixture.members, "2026-11", config));
+  assert.ok(insert.rows.every((row) => row.period === "2026-11"));
+  assert.equal(insert.endpoint.searchParams.get("on_conflict"), "member_id,category,period");
   assert.equal(insert.headers.Prefer, "resolution=ignore-duplicates,return=minimal");
   assert.ok(context.logs.includes("dues: 13 rows"));
 });
@@ -164,7 +176,7 @@ test("REST 오류는 상태코드와 최대 300자 본문을 표시하며 키를
 test("REST 빈 insert는 요청을 생략하고 update는 조건을 보존한다", async () => {
   const context = harness();
   const rest = createRest({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY, fetchImpl: context.deps.fetchImpl });
-  await rest.insertIgnore("ledger", [], "member_id,category,entry_date");
+  await rest.insertIgnore("ledger", [], "member_id,category,period");
   assert.equal(context.calls.length, 0);
   await rest.update("polls", { id: "eq.demo-poll-1" }, { cancelled: true });
   assert.equal(context.calls[0].method, "PATCH");

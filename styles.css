@@ -490,3 +490,110 @@ button.copy {
     min-width: 520px;
   }
 }
+
+.rules-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.rules-table-scroll:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.rules-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.rules-table th,
+.rules-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rules-table thead th {
+  background: #f7f7f7;
+}
+
+.rules-table tbody th {
+  font-weight: 500;
+  word-break: keep-all;
+}
+
+.rules-table td:nth-child(2) {
+  color: #1d4ed8;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rules-table td:last-child {
+  min-width: 190px;
+  overflow-wrap: anywhere;
+}
+
+.rules-table-hint {
+  margin: 10px 0 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.rules-document {
+  padding: 18px 16px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-size: 15px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.rules-document h1 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  text-align: left;
+}
+
+.rules-document h2 {
+  margin: 24px 0 10px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.rules-document p,
+.rules-document ul {
+  margin: 10px 0;
+}
+
+.rules-document ul {
+  padding-left: 20px;
+}
+
+.rules-document li + li {
+  margin-top: 8px;
+}
+
+.rules-document li > ul {
+  margin-bottom: 0;
+}
+
+.rules-document a {
+  color: #1d4ed8;
+  text-underline-offset: 3px;
+}
+
+.rules-notice {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}

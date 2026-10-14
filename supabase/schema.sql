@@ -152,10 +152,12 @@ create table if not exists public.ledger (
   settled boolean not null default false,
   ref_match_id uuid references public.matches(id),
   ref_poll_id uuid references public.polls(id),
+  period text,
   note text,
   created_at timestamptz not null default now()
 );
 alter table public.ledger enable row level security;
+alter table public.ledger add column if not exists period text;
 
 create table if not exists public.snack_claims (
   id bigint generated always as identity primary key,
@@ -180,12 +182,17 @@ create table if not exists public.rotation_history (
 );
 alter table public.rotation_history enable row level security;
 
-create unique index if not exists ledger_member_category_poll_uidx
-  on public.ledger (member_id, category, ref_poll_id) where ref_poll_id is not null;
-create unique index if not exists ledger_member_category_match_uidx
-  on public.ledger (member_id, category, ref_match_id) where ref_match_id is not null;
-create unique index if not exists ledger_member_category_date_uidx
-  on public.ledger (member_id, category, entry_date) where category in ('dues', 'injury_exempt');
+-- PostgREST의 on_conflict는 partial index를 추론하지 못하므로(42P10) 전체 unique index를 쓴다.
+-- NULL은 서로 다른 값으로 취급되므로 ref/period가 없는 행은 제한되지 않는다.
+drop index if exists public.ledger_member_category_poll_uidx;
+drop index if exists public.ledger_member_category_match_uidx;
+drop index if exists public.ledger_member_category_date_uidx;
+create unique index if not exists ledger_uidx_poll
+  on public.ledger (member_id, category, ref_poll_id);
+create unique index if not exists ledger_uidx_match
+  on public.ledger (member_id, category, ref_match_id);
+create unique index if not exists ledger_uidx_period
+  on public.ledger (member_id, category, period);
 create index if not exists match_candidates_date_score_idx
   on public.match_candidates (parsed_date, scraper_score desc);
 create index if not exists match_candidates_closed_idx

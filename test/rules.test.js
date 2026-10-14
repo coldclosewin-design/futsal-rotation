@@ -95,7 +95,7 @@ test("12명 월회비와 4주 이상 부상 1명의 50% 면제 행을 만든다"
   assert.equal(rows.filter((row) => row.category === "dues" && row.amount === 30000 && row.note === "10월 회비").length, 12);
   assert.ok(rows.every((row) => row.entry_date === "2026-10-01"));
   assert.deepEqual(rows.find((row) => row.category === "injury_exempt"), {
-    member_id: "m07", category: "injury_exempt", amount: -15000, entry_date: "2026-10-01", note: "부상 면제 50%"
+    member_id: "m07", category: "injury_exempt", amount: -15000, entry_date: "2026-10-01", period: "2026-10", note: "부상 면제 50%"
   });
 });
 

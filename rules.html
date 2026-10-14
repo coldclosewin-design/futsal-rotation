@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>회칙 · FC EXICAN</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>FC EXICAN 회칙</h1>
+
+  <main class="rules-page">
+    <section class="section" aria-labelledby="rules-summary-title">
+      <h2 id="rules-summary-title">벌금·회비 한눈에</h2>
+      <div class="rules-table-scroll" role="region" aria-labelledby="rules-summary-title" tabindex="0">
+        <table class="rules-table">
+          <thead>
+            <tr><th scope="col">항목</th><th scope="col">금액</th><th scope="col">기준</th></tr>
+          </thead>
+          <tbody id="rules-fees"></tbody>
+        </table>
+      </div>
+      <p class="rules-table-hint">표가 화면보다 넓으면 좌우로 밀어 확인하세요.</p>
+    </section>
+
+    <article id="rules-content" class="rules-document" aria-label="회칙 전문" aria-busy="true">
+      <p role="status">회칙을 불러오는 중입니다.</p>
+    </article>
+    <noscript><p>회칙을 보려면 JavaScript를 켜거나 <a href="docs/rules.md">회칙 원문</a>을 확인하세요.</p></noscript>
+
+    <aside class="rules-notice">회칙 개정 제안은 매월 24일까지 운영위원장에게</aside>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/markdown-lite.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      renderNav("rules");
+
+      const { FINES, DUES_MONTHLY, INJURY_EXEMPT_RATE } = EXICAN_CONFIG;
+      const fees = [
+        ["월 회비", DUES_MONTHLY, "매월 1일 납부 (카카오 정산)"],
+        ["부상자 면제 후 회비", DUES_MONTHLY * (1 - INJURY_EXEMPT_RATE), "4주 이상 경기 불가한 부상 · 증빙 필요"],
+        ["투표 미참여", FINES.LATE_VOTE, "월요일 13시 마감까지 미투표"],
+        ["참석 후 급불참", FINES.NO_SHOW, "개인 사유로 불참 (애사 예외는 아래 회칙 참고)"],
+        ["지각(15분 전 미도착)", FINES.LATE, "경기 시작 15분 전까지 미도착"],
+        ["경기 시작 후 도착", FINES.LATE_KICKOFF, "경기 시작 이후 도착"]
+      ];
+      const tbody = document.getElementById("rules-fees");
+      for (const [label, amount, criteria] of fees) {
+        const row = document.createElement("tr");
+        for (const [index, text] of [label, formatWon(amount), criteria].entries()) {
+          const cell = document.createElement(index === 0 ? "th" : "td");
+          if (index === 0) cell.scope = "row";
+          cell.textContent = text;
+          row.appendChild(cell);
+        }
+        tbody.appendChild(row);
+      }
+
+      const content = document.getElementById("rules-content");
+      try {
+        const response = await fetch("docs/rules.md");
+        if (!response.ok) throw new Error("회칙을 불러오지 못했습니다.");
+        content.innerHTML = renderMarkdownLite(await response.text());
+      } catch (error) {
+        content.innerHTML = "<p role=\"alert\">회칙을 불러오지 못했습니다. 잠시 후 새로고침하거나 <a href=\"docs/rules.md\">회칙 원문</a>을 확인하세요.</p>";
+      } finally {
+        content.setAttribute("aria-busy", "false");
+      }
+    });
+  </script>
+</body>
+</html>
