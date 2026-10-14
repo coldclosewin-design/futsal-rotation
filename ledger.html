@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>장부 · FC EXICAN</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>회비·벌금 장부</h1>
+  <main class="ledger-page">
+    <p id="ledger-message" role="status">장부를 불러오는 중입니다…</p>
+    <div id="ledger-content" hidden>
+      <div class="ledger-month" aria-label="조회 월">
+        <button type="button" id="previous-month" aria-label="이전 달">◀</button>
+        <label><span class="ledger-sr-only">조회 월</span><input id="ledger-month" type="month" required></label>
+        <button type="button" id="next-month" aria-label="다음 달">▶</button>
+      </div>
+      <div class="ledger-tiles" aria-live="polite">
+        <div class="card"><span>팀 잔액</span><strong id="team-balance"></strong><small>전 기간 누적</small></div>
+        <div class="card"><span>이번 달 미납 합계</span><strong id="team-unpaid"></strong><small>낼 돈이 남은 멤버의 합계</small></div>
+        <div class="card"><span>미납자</span><strong id="unpaid-count"></strong><small>미정산 항목의 합계가 양수인 멤버</small></div>
+      </div>
+      <div id="ledger-member-badge"></div>
+      <div class="ledger-toolbar">
+        <label><input type="checkbox" id="only-mine"> 내 항목만</label>
+        <button type="button" class="secondary" id="open-snack">간식 청구</button>
+      </div>
+      <section class="card ledger-section" aria-labelledby="member-ledger-title">
+        <h2 id="member-ledger-title">멤버별 이번 달</h2>
+        <p>이름이나 행을 누르면 항목을 펼칩니다. 음수 미납은 팀에서 받을 돈입니다.</p>
+        <div class="rules-table-scroll" role="region" aria-label="멤버별 장부 표" tabindex="0">
+          <table class="ledger-table">
+            <thead><tr><th scope="col">이름</th><th scope="col">회비</th><th scope="col">면제</th><th scope="col">벌금</th><th scope="col">환급·지원</th><th scope="col">납부</th><th scope="col">미납</th></tr></thead>
+            <tbody id="member-ledger"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card ledger-section" aria-labelledby="team-ledger-title">
+        <h2 id="team-ledger-title">팀 지출</h2>
+        <p>멤버에게 귀속되지 않은 구장비·기타 입출금입니다.</p>
+        <div class="rules-table-scroll" role="region" aria-label="팀 지출 표" tabindex="0">
+          <table class="ledger-table"><thead><tr><th scope="col">날짜</th><th scope="col">항목</th><th scope="col">금액</th><th scope="col">메모</th><th scope="col">정산 여부</th></tr></thead><tbody id="team-ledger"></tbody></table>
+        </div>
+      </section>
+      <section class="card ledger-section" aria-labelledby="my-claims-title">
+        <h2 id="my-claims-title">내 간식 청구</h2>
+        <ul id="my-claims" class="ledger-claims"></ul>
+      </section>
+      <section class="card ledger-section" id="ledger-admin" aria-labelledby="ledger-admin-title" hidden>
+        <h2 id="ledger-admin-title">회장 도구</h2>
+        <div class="ledger-admin-actions">
+          <button type="button" class="primary" id="settle-selected" data-write>선택 정산</button>
+          <button type="button" class="secondary" id="open-record" data-write>기록 추가</button>
+          <button type="button" class="secondary" id="open-exempt" data-write>회장 면제</button>
+        </div>
+        <p>납부·환급이 완료된 항목을 선택해 정산하세요. 멤버별 전부 정산은 조회 중인 달에만 적용됩니다.</p>
+        <h3>간식 청구 승인</h3>
+        <ul id="admin-claims" class="ledger-claims"></ul>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="snack-dialog" class="ledger-dialog" aria-labelledby="snack-title">
+    <form id="snack-form">
+      <h2 id="snack-title">간식 청구</h2>
+      <label for="snack-match">매치 (최근 4주)</label><select id="snack-match" required></select>
+      <p id="snack-match-notice" class="ledger-help"></p>
+      <label for="snack-amount">구매 금액 (원)</label><input id="snack-amount" type="number" min="1" max="2147483647" step="1" inputmode="numeric" required>
+      <label for="snack-items">구매 품목</label><input id="snack-items" placeholder="예: 물2 음료1" maxlength="500" required>
+      <p class="ledger-form-error" role="alert"></p>
+      <button type="submit" class="primary" data-write>청구 제출</button>
+      <button type="button" class="secondary" data-close>취소</button>
+    </form>
+  </dialog>
+
+  <dialog id="record-dialog" class="ledger-dialog" aria-labelledby="record-title">
+    <form id="record-form">
+      <h2 id="record-title">기록 추가</h2>
+      <label for="record-kind">종류</label>
+      <select id="record-kind">
+        <option value="fine_late">지각</option><option value="fine_late_kickoff">경기 후 도착</option><option value="fine_no_show">급불참</option>
+        <option value="venue_fee">구장비</option><option value="plab_support">플랩 지원</option><option value="deposit">입금</option><option value="adjustment">조정</option>
+      </select>
+      <label for="record-member">대상 멤버</label><select id="record-member"></select>
+      <label for="record-match">매치 (최근 8주 또는 없음)</label><select id="record-match"></select>
+      <label for="record-date">기록 날짜</label><input id="record-date" type="date" required>
+      <label for="record-amount">금액 (원)</label><input id="record-amount" type="number" min="-2147483647" max="2147483647" step="1" required>
+      <p id="record-help" class="ledger-help"></p>
+      <label for="record-note">메모</label><input id="record-note" maxlength="500">
+      <p class="ledger-help">회비·벌금의 납부 확인은 정산 버튼을 이용하세요. 입금은 회비와 별개의 수입을 기록합니다.</p>
+      <p class="ledger-form-error" role="alert"></p>
+      <button type="submit" class="primary" data-write>기록 저장</button>
+      <button type="button" class="secondary" data-close>취소</button>
+    </form>
+  </dialog>
+
+  <dialog id="exempt-dialog" class="ledger-dialog" aria-labelledby="exempt-title">
+    <form id="exempt-form">
+      <h2 id="exempt-title">회장 면제</h2>
+      <label for="exempt-match">공식 매치 (최근 8주)</label><select id="exempt-match" required></select>
+      <p id="exempt-help" class="ledger-help"></p>
+      <p class="ledger-form-error" role="alert"></p>
+      <button type="submit" class="primary" data-write>면제 기록</button>
+      <button type="button" class="secondary" data-close>취소</button>
+    </form>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ledger-rules.js"></script>
+  <script src="js/data-ledger.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      renderNav("ledger");
+      const demo = ExicanData.mode() === "demo";
+      const rules = ExicanLedgerRules;
+      const get = (id) => document.getElementById(id);
+      const today = () => ExicanRules.kstDate(new Date());
+      const daysAgo = (days) => new Date(new Date(`${today()}T00:00:00Z`).getTime() - days * 86400000).toISOString().slice(0, 10);
+      const statusLabel = { pending: "대기", approved: "승인", rejected: "거절" };
+      let rows = [], claims = [], members = [], matches = [];
+      let member = null, role = "anon", busy = false, version = 0;
+      const expanded = new Set();
+      const selected = new Set();
+      get("ledger-month").value = rules.monthOf(today());
+      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+
+      const isAdmin = () => demo ? Boolean(member?.is_president) : role === "admin";
+      const month = () => get("ledger-month").value;
+      const monthRows = () => rows.filter((row) => rules.monthOf(row.entry_date) === month());
+      const nameOf = (id) => members.find((person) => person.id === id)?.name || id || "팀";
+      const matchLabel = (match) => `${match.match_date} ${(match.start_time || "").slice(0, 5)} · ${match.venue || match.location || "공식 경기"}`;
+
+      function entryHtml(row) {
+        const label = rules.CATEGORY_LABELS[row.category] || row.category;
+        const checkbox = isAdmin() && !row.settled ? `<label><input type="checkbox" data-settle="${escapeHtml(row.id)}" ${selected.has(String(row.id)) ? "checked" : ""} ${busy ? "disabled" : ""} aria-label="${escapeHtml(`${nameOf(row.member_id)} ${row.entry_date} ${label} 정산 선택`)}"> 미정산</label>` : row.settled ? "정산 완료" : "미정산";
+        return `<tr><td>${escapeHtml(row.entry_date)}</td><td>${escapeHtml(label)}</td><td>${formatWon(row.amount)}</td><td class="ledger-note">${escapeHtml(row.note || "—")}</td><td>${checkbox}</td></tr>`;
+      }
+
+      function claimHtml(claim, admin) {
+        const match = matches.find((item) => item.id === claim.match_id);
+        const submittedDate = claim.created_at ? ExicanRules.kstDate(claim.created_at) : "";
+        const actions = admin && claim.status === "pending" ? `<div class="ledger-toolbar"><button type="button" class="secondary" data-review="${escapeHtml(claim.id)}" data-status="approved" data-write>승인</button><button type="button" class="secondary" data-review="${escapeHtml(claim.id)}" data-status="rejected" data-write>거절</button></div>` : "";
+        return `<li><strong>${escapeHtml(nameOf(claim.buyer_id))} · ${formatWon(claim.amount)}</strong><span class="ledger-claim-status">${statusLabel[claim.status] || "상태 확인 필요"}</span><p>${escapeHtml(claim.items || "품목 없음")}</p><small>${escapeHtml(match ? matchLabel(match) : "매치 정보 없음")} · ${escapeHtml(submittedDate)}</small>${actions}</li>`;
+      }
+
+      function render() {
+        const currentRows = monthRows();
+        const summary = rules.teamSummary(rows, month());
+        get("team-balance").textContent = formatWon(summary.balance);
+        get("team-unpaid").textContent = formatWon(summary.unpaidMembers.reduce((sum, row) => sum + row.outstanding, 0));
+        get("unpaid-count").textContent = `${summary.unpaidMembers.length}명`;
+        const visibleMembers = members.filter((person) => (!get("only-mine").checked || person.id === member?.id) &&
+          (person.active || currentRows.some((row) => row.member_id === person.id)));
+        get("member-ledger").innerHTML = visibleMembers.map((person) => {
+          const total = rules.memberSummary(rows, person.id, month());
+          const entries = currentRows.filter((row) => row.member_id === person.id);
+          const id = `ledger-detail-${person.id}`;
+          const outstanding = total.outstanding < 0 ? `받을 돈 ${formatWon(-total.outstanding)}` : formatWon(total.outstanding);
+          const settleAll = isAdmin() && entries.some((row) => !row.settled) ? `<button type="button" class="secondary" data-settle-member="${escapeHtml(person.id)}" data-write>${escapeHtml(person.name)} 전부 정산</button>` : "";
+          return `<tr data-member="${escapeHtml(person.id)}"><th scope="row"><button type="button" class="ledger-expand" data-expand="${escapeHtml(person.id)}" aria-controls="${escapeHtml(id)}" aria-expanded="${expanded.has(person.id)}">${escapeHtml(person.name)} ${expanded.has(person.id) ? "▴" : "▾"}</button></th><td>${formatWon(total.due)}</td><td>${formatWon(total.exempt)}</td><td>${formatWon(total.fine)}</td><td>${formatWon(total.refund)}</td><td>${formatWon(total.settled)}</td><td class="ledger-outstanding ${total.outstanding < 0 ? "ledger-refund" : ""}">${outstanding}</td></tr>
+            <tr id="${escapeHtml(id)}" ${expanded.has(person.id) ? "" : "hidden"}><td colspan="7" class="ledger-details">${settleAll}<table class="ledger-entry-table"><caption>${escapeHtml(person.name)} ${escapeHtml(month())} 항목</caption><thead><tr><th scope="col">날짜</th><th scope="col">항목</th><th scope="col">금액</th><th scope="col">메모</th><th scope="col">정산 여부</th></tr></thead><tbody>${entries.map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 기록이 없습니다.</td></tr>"}</tbody></table></td></tr>`;
+        }).join("") || "<tr><td colspan=\"7\">표시할 멤버가 없습니다.</td></tr>";
+        get("team-ledger").innerHTML = currentRows.filter((row) => row.member_id == null).map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 팀 지출이 없습니다.</td></tr>";
+        get("my-claims").innerHTML = claims.filter((claim) => claim.buyer_id === member?.id).map((claim) => claimHtml(claim, false)).join("") || "<li>내 청구가 없습니다.</li>";
+        get("ledger-admin").hidden = !isAdmin();
+        get("ledger-admin-title").textContent = demo ? "회장 도구 · 데모" : "회장 도구";
+        get("admin-claims").innerHTML = isAdmin() ? claims.map((claim) => claimHtml(claim, true)).join("") || "<li>청구가 없습니다.</li>" : "";
+        if (member) ExicanMember.renderBadge(get("ledger-member-badge"), member, async () => {
+          ExicanMember.clear();
+          member = await ExicanMember.ensure(members.filter((person) => person.active));
+          selected.clear();
+          render();
+        });
+        updateBusy();
+      }
+
+      function updateBusy() {
+        document.querySelectorAll("[data-write], [data-close], #open-snack, #ledger-member-badge button, .ledger-month button, #ledger-month, #only-mine").forEach((control) => { control.disabled = busy; });
+        document.querySelectorAll(".ledger-dialog input, .ledger-dialog select").forEach((control) => { control.disabled = busy; });
+        if (!busy) get("record-member").disabled = get("record-kind").value === "venue_fee";
+        get("settle-selected").disabled = busy || !selected.size;
+        get("settle-selected").textContent = selected.size ? `선택 정산 (${selected.size}건)` : "선택 정산";
+      }
+
+      async function refresh() {
+        const request = ++version;
+        const result = await Promise.all([ExicanData.ledgerRange(), ExicanData.snackClaims(), ExicanData.members({ activeOnly: false }), ExicanData.ledgerMatches()]);
+        if (request !== version || (!demo && role === "anon")) return;
+        [rows, claims, members, matches] = result;
+        render();
+      }
+
+      function openDialog(id) {
+        if (busy) return;
+        const dialog = get(id);
+        dialog.querySelector(".ledger-form-error").textContent = "";
+        dialog.showModal();
+      }
+
+      async function write(operation, dialog) {
+        if (busy) return;
+        busy = true;
+        updateBusy();
+        try {
+          const message = await operation();
+          selected.clear();
+          if (dialog) dialog.close();
+          showToast(message || "저장했습니다");
+          await refresh();
+        } catch (error) {
+          const message = [error.code, error.status].some((code) => ["42501", "403"].includes(String(code))) ? "회장 로그인이 필요합니다" : error.message || "저장하지 못했습니다";
+          if (dialog?.open) dialog.querySelector(".ledger-form-error").textContent = message;
+          showToast(message);
+        } finally {
+          busy = false;
+          render();
+        }
+      }
+
+      function fillMatches(select, days, allowEmpty) {
+        const recent = matches.filter((match) => match.match_date >= daysAgo(days) && match.match_date <= today());
+        select.innerHTML = (allowEmpty ? "<option value=\"\">없음</option>" : "<option value=\"\">매치 선택</option>") +
+          recent.map((match) => `<option value="${escapeHtml(match.id)}">${escapeHtml(matchLabel(match))}</option>`).join("");
+        return recent.length;
+      }
+
+      function recordDefaults() {
+        const category = get("record-kind").value;
+        const fine = category.startsWith("fine_");
+        const team = ["venue_fee", "deposit", "adjustment"].includes(category);
+        get("record-member").innerHTML = (team ? "<option value=\"\">팀 (대상 없음)</option>" : "<option value=\"\">멤버 선택</option>") +
+          members.filter((person) => person.active).map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.name)}</option>`).join("");
+        get("record-member").required = !team;
+        get("record-member").disabled = category === "venue_fee";
+        get("record-amount").value = fine ? rules.fineRow(category.slice(5), null, { id: null, match_date: today() }, EXICAN_CONFIG).amount : "";
+        get("record-help").textContent = fine ? "벌금은 설정 금액을 자동으로 채웁니다. 필요하면 양수 금액으로 수정하세요." :
+          ["venue_fee", "plab_support"].includes(category) ? "지출·지원 금액은 음수로 입력하세요. 플랩 지원은 1인당 월 1회입니다." :
+          category === "deposit" ? "입금은 양수로 기록하며 바로 정산 완료로 처리합니다." : "추가 청구는 양수, 차감·환급은 음수로 입력하세요.";
+      }
+
+      get("ledger-month").addEventListener("change", () => {
+        if (!/^\d{4}-\d{2}$/.test(month())) get("ledger-month").value = rules.monthOf(today());
+        selected.clear();
+        render();
+      });
+      for (const [id, delta] of [["previous-month", -1], ["next-month", 1]]) get(id).addEventListener("click", () => {
+        const [year, number] = month().split("-").map(Number);
+        get("ledger-month").value = new Date(Date.UTC(year, number - 1 + delta, 1)).toISOString().slice(0, 7);
+        selected.clear();
+        render();
+      });
+      get("only-mine").addEventListener("change", () => { selected.clear(); render(); });
+      get("member-ledger").addEventListener("click", (event) => {
+        const settle = event.target.closest("[data-settle-member]");
+        if (settle) {
+          const ids = monthRows().filter((row) => row.member_id === settle.dataset.settleMember && !row.settled).map((row) => row.id);
+          write(async () => { await ExicanData.setSettled(ids, true); return "이번 달 항목을 전부 정산했습니다"; });
+          return;
+        }
+        const row = event.target.closest("tr[data-member]");
+        if (!row) return;
+        const id = row.dataset.member;
+        if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+        render();
+        get(`ledger-detail-${id}`).previousElementSibling.querySelector("button").focus();
+      });
+      get("ledger-content").addEventListener("change", (event) => {
+        if (!event.target.matches("[data-settle]")) return;
+        const id = event.target.dataset.settle;
+        if (event.target.checked) selected.add(id); else selected.delete(id);
+        updateBusy();
+      });
+      get("settle-selected").addEventListener("click", () => write(async () => {
+        await ExicanData.setSettled(Array.from(selected), true);
+        return "선택한 항목을 정산했습니다";
+      }));
+      get("admin-claims").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-review]");
+        if (button) write(async () => {
+          await ExicanData.reviewSnackClaim(button.dataset.review, button.dataset.status);
+          return `간식 청구를 ${statusLabel[button.dataset.status]}했습니다`;
+        });
+      });
+      document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
+      document.querySelectorAll("dialog").forEach((dialog) => dialog.addEventListener("cancel", (event) => { if (busy) event.preventDefault(); }));
+
+      get("open-snack").addEventListener("click", () => {
+        get("snack-form").reset();
+        const count = fillMatches(get("snack-match"), 28, false);
+        get("snack-match-notice").textContent = count ? "내 이름으로 청구합니다. 승인 후 환급 대기 항목으로 기록됩니다." : "최근 4주 매치가 없습니다. 회장에게 매치 등록을 요청하세요.";
+        openDialog("snack-dialog");
+      });
+      get("snack-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = { match_id: get("snack-match").value, amount: Number(get("snack-amount").value), items: get("snack-items").value };
+        write(async () => { await ExicanData.submitSnackClaim(input); return "간식 청구를 제출했습니다"; }, get("snack-dialog"));
+      });
+      get("open-record").addEventListener("click", () => {
+        get("record-form").reset();
+        fillMatches(get("record-match"), 56, true);
+        get("record-date").value = today();
+        recordDefaults();
+        openDialog("record-dialog");
+      });
+      get("record-kind").addEventListener("change", recordDefaults);
+      get("record-match").addEventListener("change", () => {
+        get("record-date").value = matches.find((match) => match.id === get("record-match").value)?.match_date || today();
+      });
+      get("record-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const category = get("record-kind").value;
+        const memberId = get("record-member").value || null;
+        const match = matches.find((item) => item.id === get("record-match").value) || { id: null, match_date: get("record-date").value };
+        const row = category.startsWith("fine_") ? rules.fineRow(category.slice(5), memberId, match, EXICAN_CONFIG) :
+          { member_id: memberId, category, ref_match_id: match.id, entry_date: get("record-date").value };
+        row.amount = Number(get("record-amount").value);
+        row.note = get("record-note").value.trim() || row.note || rules.CATEGORY_LABELS[category];
+        row.settled = row.member_id === null || category === "deposit";
+        write(async () => {
+          if (category === "deposit" && row.amount < 0) throw new Error("입금은 양수로 입력하세요");
+          if (category === "plab_support" && !rules.plabSupportAllowed(rows, memberId, rules.monthOf(row.entry_date))) throw new Error("플랩 지원은 1인당 월 1회만 가능합니다");
+          await ExicanData.addLedger(row);
+          return "기록을 추가했습니다";
+        }, get("record-dialog"));
+      });
+      get("open-exempt").addEventListener("click", () => {
+        fillMatches(get("exempt-match"), 56, false);
+        const president = members.find((person) => person.is_president && person.active);
+        get("exempt-help").textContent = president ? `${president.name} · ${EXICAN_CONFIG.PRESIDENT_EXEMPT_MODE === "month" ? "매월" : "매치마다"} ${formatWon(-rules.presidentExemptRow({ id: null, match_date: today() }, president.id, EXICAN_CONFIG).amount)} 면제` : "활동 중인 회장 멤버가 없습니다.";
+        openDialog("exempt-dialog");
+      });
+      get("exempt-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const match = matches.find((item) => item.id === get("exempt-match").value);
+        const president = members.find((person) => person.is_president && person.active);
+        write(async () => {
+          if (!match || !president) throw new Error("매치와 회장 멤버를 확인하세요");
+          await ExicanData.addLedger(rules.presidentExemptRow(match, president.id, EXICAN_CONFIG));
+          return "회장 면제를 기록했습니다";
+        }, get("exempt-dialog"));
+      });
+
+      try {
+        if (!demo) {
+          await ExicanAuth.renderAuthBar();
+          role = await ExicanAuth.requireTeam();
+        }
+        await refresh();
+        member = await ExicanMember.ensure(members.filter((person) => person.active));
+        get("ledger-message").hidden = true;
+        get("ledger-content").hidden = false;
+        render();
+        if (!demo) await ExicanAuth.onAuthChange(async (event, session) => {
+          role = roleFromEmail(session?.user?.email, EXICAN_CONFIG);
+          version += 1;
+          selected.clear();
+          document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+          if (role === "anon") {
+            rows = []; claims = []; members = []; matches = []; member = null;
+            get("ledger-content").hidden = true;
+            get("ledger-message").hidden = false;
+            get("ledger-message").textContent = "팀 로그인 후 장부를 확인하세요";
+            render();
+          } else {
+            await refresh();
+            member = await ExicanMember.ensure(members.filter((person) => person.active));
+            get("ledger-content").hidden = false;
+            get("ledger-message").hidden = true;
+            render();
+          }
+        });
+      } catch (error) {
+        get("ledger-message").hidden = false;
+        get("ledger-message").textContent = "장부를 불러오지 못했습니다. 새로고침해 주세요.";
+        showToast(error.message);
+      }
+    });
+  </script>
+</body>
+</html>
