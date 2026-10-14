@@ -36,9 +36,19 @@
   </main>
 
   <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/ui.js"></script>
+  <script src="js/supabase.js"></script>
   <script>
-    renderNav("home");
+    document.addEventListener("DOMContentLoaded", async () => {
+      renderNav("home");
+      try {
+        await ExicanAuth.renderAuthBar();
+        await ExicanAuth.requireTeam();
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
   </script>
 </body>
 </html>
