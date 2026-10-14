@@ -130,7 +130,7 @@
       const schedule = buildSchedule(players, "5v5", qMap);
       const text = formatForKakao(schedule, "5v5", players, qMap);
       assert("헤더 포함", text.includes("풋살 배정 (5v5, 7명)"));
-      assert("부분 참여 표기", text.includes("A(Q1~4)"));
+      assert("부분 참여 표기", text.includes("A(Q1~Q4)"));
       assert("구분선 포함", text.includes("──"));
       assert("키퍼 요약 포함", /키퍼 총 횟수:\s/.test(text));
       assert("휴식 요약 포함", /휴식 총 횟수:\s/.test(text));
