@@ -18,12 +18,13 @@
       </section>
       <section class="card">
         <h2>매칭 후보</h2>
-        <p>준비 중</p>
-        <a href="matches.html">매칭 후보 보기</a>
+        <div id="home-candidates" aria-live="polite"><p>후보를 불러오는 중입니다…</p></div>
+        <a href="matches.html">전체 보기 →</a>
       </section>
       <section class="card">
         <h2>확정 매치</h2>
-        <p>준비 중</p>
+        <p id="home-match" aria-live="polite">확정 매치를 불러오는 중입니다…</p>
+        <p id="home-created-match" hidden></p>
         <a href="matches.html">확정 매치 보기</a>
       </section>
       <section class="card">
@@ -32,6 +33,7 @@
         <a href="ledger.html">장부 페이지로</a>
       </section>
     </div>
+    <button id="home-matches-retry" class="secondary" type="button" hidden>매칭 정보 다시 시도</button>
     <a class="hub-rotation-link" href="rotation.html">배정표 만들기</a>
   </main>
 
@@ -41,14 +43,81 @@
   <script src="js/supabase.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/candidates.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("home");
       const demo = ExicanData.mode() === "demo";
       const summary = document.getElementById("weekly-poll-summary");
+      const candidateCard = document.getElementById("home-candidates");
+      const matchCard = document.getElementById("home-match");
+      const createdCard = document.getElementById("home-created-match");
+      const retryMatches = document.getElementById("home-matches-retry");
+      let dashboardVersion = 0;
+      let handedMatch = null;
       if (demo) {
         document.querySelectorAll('.topnav a[href="index.html"], a[href="vote.html"]').forEach((link) => { link.search = "?demo=1"; });
+        document.querySelectorAll("a[href='matches.html']").forEach((link) => { link.search = "?demo=1"; });
+        try {
+          const saved = sessionStorage.getItem("exican_demo_match_handoff");
+          sessionStorage.removeItem("exican_demo_match_handoff");
+          const value = saved ? JSON.parse(saved) : null;
+          if (value && /^demo-match-/.test(value.id) && /^\d{4}-\d{2}-\d{2}$/.test(value.match_date) && typeof value.start_time === "string") handedMatch = value;
+        } catch (error) { /* 전달 데이터가 없거나 만료되면 기본 픽스처를 표시한다. */ }
       }
+      async function loadDashboard() {
+        const request = ++dashboardVersion;
+        const today = ExicanRules.kstDate(new Date());
+        retryMatches.hidden = true;
+        const results = await Promise.allSettled([
+          ExicanData.candidates({ from: demo ? undefined : today, includeClosed: true }),
+          ExicanData.matches({ from: demo ? undefined : today })
+        ]);
+        if (request !== dashboardVersion) return;
+        const [candidates, matches] = results;
+        candidateCard.textContent = "";
+        if (candidates.status === "fulfilled") {
+          const rows = demo ? ExicanCandidates.shiftDemoDates(candidates.value, today) : candidates.value;
+          const ranked = ExicanCandidates.filterCandidates(rows, ExicanCandidates.DEFAULT_FILTERS, today).ranked.slice(0, 3);
+          if (!ranked.length) candidateCard.textContent = "이번 주 토요일 오전 후보가 아직 없습니다";
+          else {
+            const list = document.createElement("ul");
+            list.className = "home-candidate-list";
+            for (const row of ranked) {
+              const item = document.createElement("li");
+              const date = document.createElement("span");
+              date.textContent = ExicanCandidates.describeSchedule(row);
+              const link = document.createElement("a");
+              link.href = EXICAN_CONFIG.CAFE.ARTICLE_URL(row.article_id, row.menu_id);
+              link.target = "_blank";
+              link.rel = "noopener";
+              link.textContent = row.subject;
+              item.append(date, link);
+              list.appendChild(item);
+            }
+            candidateCard.appendChild(list);
+          }
+        } else {
+          candidateCard.textContent = "후보를 불러오지 못했습니다";
+          retryMatches.hidden = false;
+        }
+        createdCard.hidden = true;
+        if (matches.status === "fulfilled") {
+          let rows = demo ? ExicanCandidates.shiftDemoDates(matches.value, today) : matches.value;
+          if (demo && handedMatch) rows = rows.filter((row) => row.id !== handedMatch.id).concat(handedMatch);
+          rows = rows.filter((row) => row.match_date >= today && row.status === "scheduled")
+            .sort((a, b) => `${a.match_date}${a.start_time}`.localeCompare(`${b.match_date}${b.start_time}`));
+          matchCard.textContent = rows.length ? ExicanCandidates.describeMatch(rows[0]) : "확정된 매치가 없습니다";
+          if (demo && handedMatch && rows[0]?.id !== handedMatch.id) {
+            createdCard.hidden = false;
+            createdCard.textContent = `방금 등록: ${ExicanCandidates.describeMatch(handedMatch)}`;
+          }
+        } else {
+          matchCard.textContent = "확정 매치를 불러오지 못했습니다";
+          retryMatches.hidden = false;
+        }
+      }
+      retryMatches.addEventListener("click", loadDashboard);
       async function loadSummary() {
         const [poll, members] = await Promise.all([ExicanData.currentPoll(), ExicanData.members()]);
         if (!poll) {
@@ -66,13 +135,23 @@
         catch (error) { if (!demo) throw error; }
         if (!demo) await ExicanAuth.requireTeam();
         await loadSummary();
+        await loadDashboard();
         if (!demo) await ExicanAuth.onAuthChange(async (event, session) => {
           if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") summary.textContent = "팀 로그인 후 투표를 확인하세요";
           else await loadSummary();
+          if (roleFromEmail(session?.user?.email, EXICAN_CONFIG) === "anon") {
+            dashboardVersion += 1;
+            candidateCard.textContent = "팀 로그인 후 후보를 확인하세요";
+            matchCard.textContent = "팀 로그인 후 매치를 확인하세요";
+            createdCard.hidden = true;
+            retryMatches.hidden = true;
+          } else await loadDashboard();
         });
       } catch (error) {
         summary.textContent = "투표를 불러오지 못했습니다. 새로고침해 주세요.";
         showToast(error.message);
+        candidateCard.textContent = "매칭 정보를 불러오지 못했습니다";
+        matchCard.textContent = "매칭 정보를 불러오지 못했습니다";
       }
     });
   </script>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>매칭 후보 · FC EXICAN</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>매칭 후보</h1>
+  <main class="matches-page">
+    <div id="match-member" class="member-badge"></div>
+    <section class="match-filters card" aria-label="후보 필터">
+      <div id="region-filters" class="filter-chips" aria-label="지역"></div>
+      <div class="filter-options">
+        <label><input id="saturday-only" type="checkbox" checked> 토요일만</label>
+        <label><input id="morning-only" type="checkbox" checked> 오전만</label>
+        <label>포맷 <select id="format-filter"><option value="">전체</option><option value="5v5">5v5</option><option value="6v6">6v6</option></select></label>
+        <label><input id="include-closed" type="checkbox"> 마감 포함</label>
+        <label><input id="include-unparsed" type="checkbox" checked> 미분류 보기</label>
+      </div>
+      <p id="candidate-count" role="status"></p>
+    </section>
+    <p id="matches-message" role="status">후보를 불러오는 중입니다…</p>
+    <button id="matches-retry" class="secondary" type="button" hidden>다시 시도</button>
+    <a id="confirmed-home" class="match-home-link" href="index.html" hidden>홈에서 등록 매치 확인 →</a>
+    <section id="ranked-candidates" class="candidate-list" aria-label="매칭 후보"></section>
+    <section id="unparsed-section" hidden>
+      <h2>미분류</h2>
+      <p class="match-help">날짜나 시간이 확인되지 않은 글입니다. 카페 원문을 확인하세요.</p>
+      <div id="unparsed-candidates" class="candidate-list"></div>
+    </section>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/member.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/parse-title.js"></script>
+  <script src="js/candidates.js"></script>
+  <script src="js/sms-template.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      renderNav("matches");
+      const api = ExicanCandidates;
+      const demo = ExicanData.mode() === "demo";
+      const today = () => ExicanRules.kstDate(new Date());
+      const message = document.getElementById("matches-message");
+      const retry = document.getElementById("matches-retry");
+      const homeLink = document.getElementById("confirmed-home");
+      const menuIds = Object.keys(EXICAN_CONFIG.CAFE.MENUS).map(Number);
+      const filterKey = "exican_match_filters";
+      const costKey = "exican_candidate_costs";
+      let rows = [];
+      let members = [];
+      let reactions = [];
+      let poll = null;
+      let attendCount = null;
+      let member = null;
+      let role = "anon";
+      let knownMatches = [];
+      let latestCreated = null;
+      let version = 0;
+      let subscribed = false;
+      let modal = null;
+      const drafts = new Map();
+      const reacting = new Set();
+      function readStorage(key) {
+        try { return JSON.parse(localStorage.getItem(key)); }
+        catch (error) { return null; }
+      }
+      function writeStorage(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); }
+        catch (error) { showToast("브라우저 저장소를 사용할 수 없어 설정이 유지되지 않습니다"); }
+      }
+      let filters = api.normalizeFilters(readStorage(filterKey), menuIds);
+      const storedCosts = readStorage(costKey);
+      const costs = storedCosts && typeof storedCosts === "object" && !Array.isArray(storedCosts) ? storedCosts : {};
+      if (demo) {
+        document.querySelectorAll(".topnav a").forEach((link) => {
+          if (["index.html", "vote.html", "matches.html"].some((path) => link.getAttribute("href") === path)) link.search = "?demo=1";
+        });
+        homeLink.href = "index.html?demo=1";
+      }
+
+      function isAdmin() { return demo ? Boolean(member?.is_president) : role === "admin"; }
+      async function requireAdmin() {
+        if (!isAdmin() || (!demo && await ExicanAuth.getRole() !== "admin")) throw new Error("회장 로그인이 필요합니다");
+      }
+      function showMember() {
+        const container = document.getElementById("match-member");
+        if (member) ExicanMember.renderBadge(container, member, async () => {
+          ExicanMember.clear();
+          await chooseMember();
+        });
+        else {
+          container.textContent = "";
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "secondary";
+          button.textContent = "내 이름 선택";
+          button.disabled = !members.length;
+          button.addEventListener("click", () => chooseMember().catch((error) => showToast(error.message)));
+          container.appendChild(button);
+        }
+      }
+      async function chooseMember() {
+        member = await ExicanMember.ensure(members);
+        drafts.clear();
+        showMember();
+        renderCards();
+        return member;
+      }
+
+      function renderFilters() {
+        const regions = document.getElementById("region-filters");
+        regions.textContent = "";
+        for (const [id, label] of [[null, "전체"], ...Object.entries(EXICAN_CONFIG.CAFE.MENUS).map(([key, value]) => [Number(key), value])]) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.setAttribute("aria-pressed", String(id === null ? filters.menuIds === null : Boolean(filters.menuIds?.includes(id))));
+          button.addEventListener("click", () => {
+            if (id === null) filters.menuIds = null;
+            else {
+              const selected = new Set(filters.menuIds || []);
+              if (selected.has(id)) selected.delete(id); else selected.add(id);
+              filters.menuIds = selected.size ? [...selected] : null;
+            }
+            writeStorage(filterKey, filters);
+            renderFilters();
+            renderCards();
+          });
+          regions.appendChild(button);
+        }
+        for (const [id, key] of [["saturday-only", "saturdayOnly"], ["morning-only", "morningOnly"], ["include-closed", "includeClosed"], ["include-unparsed", "includeUnparsed"]]) {
+          document.getElementById(id).checked = filters[key];
+          document.getElementById(id).onchange = (event) => {
+            filters[key] = event.target.checked;
+            writeStorage(filterKey, filters);
+            renderCards();
+          };
+        }
+        const format = document.getElementById("format-filter");
+        format.value = filters.formats?.length === 1 ? filters.formats[0] : "";
+        format.onchange = () => {
+          filters.formats = format.value ? [format.value] : null;
+          writeStorage(filterKey, filters);
+          renderCards();
+        };
+      }
+
+      function badge(text, status) {
+        const span = document.createElement("span");
+        span.className = "candidate-badge";
+        span.textContent = text;
+        if (status) span.dataset.status = status;
+        return span;
+      }
+      function reactionNames(row) {
+        return reactions.filter((reaction) => String(reaction.article_id) === String(row.article_id))
+          .map((reaction) => members.find((person) => person.id === reaction.member_id)?.name || "비활동 멤버");
+      }
+      function refreshReaction(row, button, namesButton) {
+        const names = reactionNames(row);
+        const mine = reactions.some((reaction) => String(reaction.article_id) === String(row.article_id) && reaction.member_id === member?.id);
+        button.textContent = `👍 ${names.length}`;
+        button.title = names.length ? names.join(", ") : "아직 반응이 없습니다";
+        button.setAttribute("aria-label", `추천 ${names.length}명`);
+        button.setAttribute("aria-pressed", String(mine));
+        button.disabled = reacting.has(row.article_id);
+        namesButton.title = button.title;
+      }
+      function renderCard(row) {
+        const card = document.createElement("article");
+        card.className = "card candidate-card";
+        card.dataset.articleId = row.article_id;
+        const header = document.createElement("div");
+        header.className = "candidate-heading";
+        const heading = document.createElement("h3");
+        const link = document.createElement("a");
+        link.href = EXICAN_CONFIG.CAFE.ARTICLE_URL(row.article_id, row.menu_id);
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = row.subject;
+        heading.appendChild(link);
+        const score = document.createElement("small");
+        score.textContent = `${row.scraper_score}점`;
+        header.append(heading, score);
+        const badges = document.createElement("div");
+        badges.className = "candidate-badges";
+        badges.appendChild(badge(row.menu_name));
+        if (row.head_name) badges.appendChild(badge(row.head_name));
+        badges.appendChild(badge(api.describeSchedule(row)));
+        for (const format of (row.parsed_format || "").split(",").filter(Boolean)) badges.appendChild(badge(format));
+        if (row.is_closed) badges.appendChild(badge("마감", "closed"));
+        if (!row.parse_ok) badges.appendChild(badge("미분류", "unparsed"));
+        if (row.contact_status !== "new") badges.appendChild(badge(api.STATUS_LABELS[row.contact_status] || "미연락", row.contact_status));
+        const meta = document.createElement("p");
+        meta.className = "candidate-meta";
+        meta.textContent = `${ExicanRules.formatRelative(row.write_ts, new Date().toISOString())} 작성 · 댓글 ${row.comment_count || 0} · 조회 ${row.read_count || 0}`;
+        const actions = document.createElement("div");
+        actions.className = "candidate-actions";
+        const reaction = document.createElement("button");
+        reaction.type = "button";
+        reaction.className = "reaction-button";
+        const names = document.createElement("button");
+        names.type = "button";
+        names.className = "secondary";
+        names.textContent = "반응한 팀원";
+        names.addEventListener("click", () => showToast(reactionNames(row).join(", ") || "아직 반응이 없습니다"));
+        refreshReaction(row, reaction, names);
+        reaction.addEventListener("click", async () => {
+          if (reacting.has(row.article_id)) return;
+          reacting.add(row.article_id);
+          refreshReaction(row, reaction, names);
+          try {
+            if (!member) await chooseMember();
+            const selectedMember = member;
+            const active = await ExicanData.toggleReaction(row.article_id, selectedMember.id);
+            reactions = reactions.filter((item) => !(String(item.article_id) === String(row.article_id) && item.member_id === selectedMember.id));
+            if (active) reactions.push({ article_id: row.article_id, member_id: selectedMember.id });
+            showToast(active ? "추천했습니다" : "추천을 취소했습니다");
+          } catch (error) { showToast(error.message); }
+          finally {
+            reacting.delete(row.article_id);
+            const current = document.querySelector(`[data-article-id="${row.article_id}"]`);
+            if (current) refreshReaction(row, current.querySelector(".reaction-button"), current.querySelector(".candidate-actions .secondary"));
+          }
+        });
+        actions.append(reaction, names);
+        card.append(header, badges, meta, actions);
+        // 연락처/메모는 팀 화면의 숨겨진 DOM에도 넣지 않는다.
+        if (isAdmin()) card.appendChild(adminPanel(row));
+        return card;
+      }
+      function renderCards() {
+        const result = api.filterCandidates(rows, filters, today());
+        document.getElementById("candidate-count").textContent = `후보 ${result.ranked.length}건 (미분류 ${result.unparsed.length}건)`;
+        const ranked = document.getElementById("ranked-candidates");
+        const unparsed = document.getElementById("unparsed-candidates");
+        ranked.replaceChildren(...result.ranked.map(renderCard));
+        unparsed.replaceChildren(...result.unparsed.map(renderCard));
+        document.getElementById("unparsed-section").hidden = !result.unparsed.length;
+        if (!result.ranked.length && !result.unparsed.length && message.hidden) {
+          const empty = document.createElement("p");
+          empty.textContent = "조건에 맞는 후보가 없습니다. 필터를 변경해 보세요.";
+          ranked.appendChild(empty);
+        }
+      }
+
+      function adminPanel(row) {
+        const details = document.createElement("details");
+        details.className = "candidate-admin";
+        const summary = document.createElement("summary");
+        summary.textContent = "관리";
+        details.appendChild(summary);
+        const form = document.createElement("form");
+        form.className = "candidate-form";
+        const id = row.article_id;
+        form.innerHTML = `
+          <label for="phone-${id}">연락처</label><input id="phone-${id}" name="phone" type="tel" autocomplete="off">
+          <div class="match-field-grid">
+            <div><label for="cost-${id}">구장비 (원)</label><input id="cost-${id}" name="cost" type="number" min="0" max="2147483647" step="1"></div>
+            <div><label for="priority-${id}">우선순위</label><select id="priority-${id}" name="our_priority"><option value="">없음</option><option>1</option><option>2</option><option>3</option></select></div>
+          </div>
+          <label for="memo-${id}">메모</label><textarea id="memo-${id}" name="memo" rows="2"></textarea>
+          <div class="contact-status-actions" aria-label="연락 상태"></div>
+          <button type="submit" class="primary">저장</button>
+          <div class="sms-actions"><button type="button" class="secondary" data-copy>문자 문구 복사</button><a data-sms>문자 앱 열기</a></div>
+          <details class="sms-preview"><summary>문자 문구 미리보기</summary><p></p></details>`;
+        if (!drafts.has(id)) drafts.set(id, { phone: row.phone || "", memo: row.memo || "", our_priority: row.our_priority ?? "",
+          cost: costs[id] ?? "", contact_status: row.contact_status || "new" });
+        const draft = drafts.get(id);
+        for (const key of ["phone", "memo", "our_priority", "cost"]) form.elements[key].value = draft[key];
+        const statusActions = form.querySelector(".contact-status-actions");
+        for (const [status, label] of [["contacted", "문자 보냄"], ["replied", "답장 옴"], ["confirmed", "확정"], ["rejected", "거절"]]) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.dataset.status = status;
+          button.addEventListener("click", () => {
+            if (status === "confirmed") openConfirmation(row, draft).catch((error) => showToast(error.message));
+            else { draft.contact_status = status; updateDraft(); }
+          });
+          statusActions.appendChild(button);
+        }
+        function smsText() {
+          return ExicanSms.buildSmsText(row, { attendCount, format: row.parsed_format?.split(",")[0], teamName: EXICAN_CONFIG.TEAM_NAME }, EXICAN_CONFIG);
+        }
+        function updateDraft() {
+          for (const key of ["phone", "memo", "our_priority", "cost"]) draft[key] = form.elements[key].value;
+          statusActions.querySelectorAll("button").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.status === draft.contact_status)));
+          const sms = form.querySelector("[data-sms]");
+          const href = ExicanSms.smsHref(draft.phone, smsText(), /iPhone|iPad|iPod/.test(navigator.userAgent));
+          if (href) sms.href = href; else sms.removeAttribute("href");
+          sms.setAttribute("aria-disabled", String(!href));
+          form.querySelector(".sms-preview p").textContent = smsText();
+        }
+        form.addEventListener("input", updateDraft);
+        form.addEventListener("change", updateDraft);
+        form.elements.cost.addEventListener("change", () => {
+          if (form.elements.cost.checkValidity()) {
+            costs[id] = form.elements.cost.value;
+            writeStorage(costKey, costs);
+          }
+        });
+        form.querySelector("[data-copy]").addEventListener("click", async () => {
+          try {
+            await requireAdmin();
+            await navigator.clipboard.writeText(smsText());
+            showToast("문자 문구를 복사했습니다");
+          } catch (error) {
+            form.querySelector(".sms-preview").open = true;
+            showToast("복사하지 못했습니다. 미리보기 문구를 길게 눌러 복사하세요");
+          }
+        });
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const button = form.querySelector("[type=submit]");
+          if (button.disabled) return;
+          button.disabled = true;
+          try {
+            await requireAdmin();
+            updateDraft();
+            const updated = await ExicanData.updateCandidate(id, api.buildCandidatePatch(draft, new Date().toISOString()));
+            Object.assign(row, updated, { parsed_date: row.parsed_date, weekday: row.weekday });
+            costs[id] = draft.cost;
+            writeStorage(costKey, costs);
+            renderCards();
+            showToast("후보 정보를 저장했습니다");
+          } catch (error) { showToast(error.message); }
+          finally { button.disabled = false; }
+        });
+        updateDraft();
+        details.appendChild(form);
+        return details;
+      }
+
+      async function openConfirmation(row, draft) {
+        await requireAdmin();
+        if (modal) return;
+        const previousFocus = document.activeElement;
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop";
+        backdrop.innerHTML = `<form class="modal match-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+          <h2 id="confirm-title">매치 확정</h2><p class="match-help">등록할 경기 정보를 확인하세요.</p>
+          <fieldset><label for="confirm-date">경기 날짜</label><input id="confirm-date" name="match_date" type="date" required>
+          <div class="match-field-grid"><div><label for="confirm-start">시작 시각</label><input id="confirm-start" name="start_time" type="time" required></div>
+          <div><label for="confirm-end">종료 시각 (24:00 가능)</label><input id="confirm-end" name="end_time" type="text" inputmode="numeric" placeholder="HH:MM" pattern="([01][0-9]|2[0-3]):[0-5][0-9]|24:00"></div></div>
+          <label for="confirm-venue">구장</label><input id="confirm-venue" name="venue" type="text">
+          <label for="confirm-opponent">상대팀</label><input id="confirm-opponent" name="opponent" type="text">
+          <div class="match-field-grid"><div><label for="confirm-cost">구장비 (원)</label><input id="confirm-cost" name="cost" type="number" min="0" max="2147483647" step="1" required></div>
+          <div><label for="confirm-format">포맷</label><select id="confirm-format" name="format" required><option value="">선택</option><option>5v5</option><option>6v6</option></select></div></div>
+          <label for="confirm-memo">메모</label><textarea id="confirm-memo" name="memo" rows="2"></textarea></fieldset>
+          <p class="auth-error" role="alert"></p><button class="primary" type="submit">매치 등록</button><button class="secondary" type="button" data-close>취소</button></form>`;
+        const form = backdrop.querySelector("form");
+        const submit = form.querySelector("[type=submit]");
+        const cancel = form.querySelector("[data-close]");
+        const fieldset = form.querySelector("fieldset");
+        let saving = false;
+        let savedMatch = knownMatches.find((item) => item.candidate_article_id === row.article_id && item.status !== "cancelled") || null;
+        const hour = (value) => value == null ? "" : `${String(value).padStart(2, "0")}:00`;
+        const initial = savedMatch || { match_date: row.parsed_date || "", start_time: hour(row.start_hour), end_time: hour(row.end_hour),
+          venue: row.venue || "", opponent: "", cost: draft.cost || 0, format: row.parsed_format?.split(",")[0] || "", memo: draft.memo };
+        for (const key of ["match_date", "start_time", "end_time", "venue", "opponent", "cost", "format", "memo"]) {
+          form.elements[key].value = initial[key] ?? "";
+        }
+        if (savedMatch) {
+          fieldset.disabled = true;
+          form.querySelector(".match-help").textContent = "이미 등록된 매치입니다. 후보의 확정 상태를 다시 저장할 수 있습니다.";
+          submit.textContent = "확정 상태 저장";
+        }
+        const background = Array.from(document.body.children).filter((element) => !["SCRIPT", "STYLE"].includes(element.tagName));
+        const inertStates = background.map((element) => element.inert);
+        const state = { close() {
+          backdrop.remove();
+          background.forEach((element, index) => { element.inert = inertStates[index]; });
+          document.body.classList.remove("auth-modal-open");
+          if (modal === state) modal = null;
+          if (previousFocus?.isConnected) previousFocus.focus();
+        } };
+        modal = state;
+        background.forEach((element) => { element.inert = true; });
+        document.body.classList.add("auth-modal-open");
+        document.body.appendChild(backdrop);
+        (savedMatch ? submit : form.elements.match_date).focus();
+        cancel.onclick = () => { if (!saving) state.close(); };
+        form.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") { event.preventDefault(); if (!saving) state.close(); }
+          if (event.key !== "Tab") return;
+          const controls = Array.from(form.querySelectorAll("input, select, textarea, button")).filter((element) => !element.matches(":disabled"));
+          event.preventDefault();
+          const index = controls.indexOf(document.activeElement);
+          if (controls.length) controls[(index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length].focus();
+        });
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (saving) return;
+          saving = true;
+          submit.disabled = true;
+          cancel.disabled = true;
+          form.querySelector(".auth-error").textContent = "";
+          try {
+            await requireAdmin();
+            if (!savedMatch) {
+              const fields = Object.fromEntries(Array.from(new FormData(form).entries()));
+              const match = api.buildMatchRow(row, fields, { presidentId: members.find((person) => person.is_president)?.id, poll });
+              const existing = demo ? knownMatches : await ExicanData.matches({ from: match.match_date });
+              savedMatch = existing.find((item) => item.candidate_article_id === row.article_id && item.match_date === match.match_date && item.start_time.slice(0, 5) === match.start_time);
+              if (!savedMatch && existing.some((item) => item.match_date === match.match_date && item.start_time.slice(0, 5) === match.start_time)) throw new Error("같은 날짜·시각에 등록된 매치가 있습니다. 날짜와 시각을 확인하세요");
+              if (!savedMatch) savedMatch = await ExicanData.createMatch(match);
+              knownMatches = knownMatches.filter((item) => item.id !== savedMatch.id).concat(savedMatch);
+              latestCreated = savedMatch;
+              homeLink.hidden = false;
+            }
+            fieldset.disabled = true;
+            await requireAdmin();
+            const updated = await ExicanData.updateCandidate(row.article_id, api.buildCandidatePatch({ ...draft, contact_status: "confirmed" }, new Date().toISOString()));
+            Object.assign(row, updated, { parsed_date: row.parsed_date, weekday: row.weekday });
+            drafts.delete(row.article_id);
+            state.close();
+            renderCards();
+            showToast("매치 등록됨");
+            homeLink.hidden = false;
+          } catch (error) {
+            const description = savedMatch ? `매치는 등록되었습니다. 후보 상태 저장을 다시 시도하세요: ${error.message}` : error.message;
+            form.querySelector(".auth-error").textContent = description;
+            showToast(description);
+            if (savedMatch) { fieldset.disabled = true; submit.textContent = "상태 저장 다시 시도"; }
+          } finally { saving = false; submit.disabled = false; cancel.disabled = false; }
+        });
+      }
+
+      homeLink.addEventListener("click", () => {
+        if (!demo || !latestCreated) return;
+        // 공용 데이터는 메모리 전용이다. 홈 이동 때 공개 요약만 한 번 전달한다.
+        const { id, match_date, start_time, end_time, venue, format, cost, status } = latestCreated;
+        try {
+          sessionStorage.setItem("exican_demo_match_handoff", JSON.stringify({ id, match_date, start_time, end_time, venue, format, cost, status }));
+        } catch (error) { showToast("브라우저 저장소를 사용할 수 없어 홈에 데모 등록 결과를 전달하지 못했습니다"); }
+      });
+
+      async function loadData() {
+        const request = ++version;
+        message.hidden = false;
+        message.textContent = "후보를 불러오는 중입니다…";
+        retry.hidden = true;
+        rows = [];
+        renderCards();
+        try {
+          const [dated, roster, current, matches, undated] = await Promise.all([
+            ExicanData.candidates({ from: demo ? undefined : today(), includeClosed: true }),
+            ExicanData.members(), ExicanData.currentPoll(), ExicanData.matches({ from: demo ? undefined : today() }),
+            // from 필터는 NULL 날짜를 제외하므로 기존 API로 미분류 날짜 없는 글을 보충한다.
+            demo ? Promise.resolve([]) : ExicanData.candidates({ includeClosed: true })
+          ]);
+          const candidates = demo ? api.shiftDemoDates(dated, today()) : [...new Map(
+            dated.concat(undated.filter((row) => !row.parse_ok && !row.parsed_date)).map((row) => [row.article_id, row])).values()];
+          const [votes, receivedReactions] = await Promise.all([
+            current ? ExicanData.votes(current.id) : Promise.resolve([]),
+            ExicanData.reactions(candidates.map((row) => row.article_id))
+          ]);
+          if (request !== version) return;
+          rows = candidates;
+          members = roster;
+          poll = current;
+          attendCount = poll ? ExicanRules.attendanceSummary(votes, members).count : null;
+          knownMatches = demo ? api.shiftDemoDates(matches, today()) : matches;
+          reactions = receivedReactions;
+          member = members.find((person) => person.id === ExicanMember.getId()) || null;
+          drafts.clear();
+          message.hidden = true;
+          showMember();
+          renderCards();
+        } catch (error) {
+          if (request !== version) return;
+          message.textContent = "후보를 불러오지 못했습니다. 다시 시도해 주세요.";
+          retry.hidden = false;
+          showToast(error.message);
+        }
+      }
+      async function start() {
+        retry.hidden = true;
+        try {
+          try { await ExicanAuth.renderAuthBar(); } catch (error) { if (!demo) throw error; }
+          if (!demo) role = await ExicanAuth.requireTeam();
+          if (!demo && !subscribed) {
+            await ExicanAuth.onAuthChange(async (event, session) => {
+              role = roleFromEmail(session?.user?.email, EXICAN_CONFIG);
+              drafts.clear();
+              if (modal) modal.close();
+              if (role === "anon") {
+                version += 1;
+                rows = []; members = []; member = null;
+                homeLink.hidden = true;
+                latestCreated = null;
+                message.hidden = false;
+                message.textContent = "팀 로그인 후 후보를 확인하세요";
+                renderCards(); showMember();
+              } else await loadData();
+            });
+            subscribed = true;
+          }
+          await loadData();
+        } catch (error) {
+          message.textContent = `후보를 불러오지 못했습니다: ${error.message}`;
+          message.hidden = false;
+          retry.hidden = false;
+          showToast(error.message);
+        }
+      }
+      retry.addEventListener("click", start);
+      renderFilters();
+      showMember();
+      start();
+    });
+  </script>
+</body>
+</html>
