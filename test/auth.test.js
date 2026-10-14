@@ -130,7 +130,7 @@ describe("모듈 초기화와 세션", () => {
   });
 
   test("설정 전에는 SDK와 DOM 없이 초기화하고 anon을 반환한다", async () => {
-    const context = { window: { EXICAN_CONFIG: config } };
+    const context = { window: { EXICAN_CONFIG: { ...config, SUPABASE_URL: "", SUPABASE_ANON_KEY: "" } } };
     runInNewContext(source, context);
     const auth = context.window.ExicanAuth;
     assert.equal(await auth.init(), null);
