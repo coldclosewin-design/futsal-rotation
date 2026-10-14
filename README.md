@@ -126,11 +126,8 @@ CI와 동일한 Node 20에서 자동 회귀 테스트를 실행합니다. 별도
 npm test
 ```
 
-`node --test test/`가 기존 91개 배정 검증과 공용 설정·UI 함수 테스트를 실행합니다.
-GitHub Actions도 모든 PR 및 `main` push에서 같은 명령을 실행합니다.
-
-Node 26에서는 `node --test test/`의 디렉터리 인자가 `MODULE_NOT_FOUND`로 실패할 수 있습니다.
-이 경우 Node 20을 사용하거나 `node --test test/config.test.js test/rotation.test.js test/ui.test.js`로 실행합니다.
+`node --test`가 `test/*.test.js`를 자동으로 찾아 기존 91개 배정 검증과 공용 설정·UI 함수 테스트를 실행합니다.
+GitHub Actions도 모든 PR 및 `main` push에서 같은 명령을 실행합니다. Node 20과 Node 26에서 동일하게 동작합니다.
 
 HTTP 서버를 실행한 뒤 아래 순서로 브라우저 UI를 확인합니다.
 
