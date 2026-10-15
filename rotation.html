@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>🥅 풋살 키퍼·휴식 배정</h1>
+  <h1>키퍼·휴식 배정</h1>
 
   <div class="section" id="rotation-integration">
     <div id="rotation-member"></div>
@@ -47,8 +48,8 @@
     <table class="result-table" id="resultTable"></table>
     <div class="summary" id="summary"></div>
     <div id="warnings" style="margin-top:8px; font-size:13px; color:#b45309;"></div>
-    <button class="secondary" id="shuffleBtn">🔄 다시 섞기 (다른 조합)</button>
-    <button class="copy" id="copyBtn">📋 카톡에 복사</button>
+    <button class="secondary" id="shuffleBtn">다시 섞기 (다른 조합)</button>
+    <button class="copy" id="copyBtn">카톡에 복사</button>
     <div id="rotation-save" hidden>
       <label>저장할 매치<select id="rotation-match"></select></label>
       <button type="button" id="save-rotation">이번 매치에 저장</button>
@@ -57,7 +58,7 @@
   </div>
 
   <div class="link-row">
-    <a href="admin.html">⚙️ 멤버 관리</a>
+    <a href="admin.html">멤버 관리</a>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -314,7 +315,7 @@
 
       const warnBox = document.getElementById("warnings");
       if (v.warnings && v.warnings.length) {
-        warnBox.textContent = "⚠️ " + v.warnings.join(" / ");
+        warnBox.textContent = "주의: " + v.warnings.join(" / ");
       } else {
         warnBox.innerHTML = "";
       }
