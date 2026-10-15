@@ -42,6 +42,8 @@ const TABBAR_KEYS = ["home", "vote", "matches", "rotation", "ledger"];
 function navLink(item, activeKey, size) {
   const link = document.createElement("a");
   link.href = item.href;
+  // 데모 모드(?demo=1)는 내비를 타고 이어진다 (페이지 스크립트의 .topnav 보정은 더 이상 필요 없음)
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).get("demo") === "1") link.search = "?demo=1";
   link.innerHTML = `${icon(item.key, size)}<span>${item.label}</span>`;
   if (item.key === activeKey) link.setAttribute("aria-current", "page");
   return link;

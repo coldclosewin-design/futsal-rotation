@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T00:00:00+09:00",
+  "title": "Design System: FC EXICAN 운영 허브",
+  "extensions": {
+    "colorMeta": {
+      "lit": { "role": "primary", "displayName": "점등 녹색", "canonical": "#34c76f", "tonalRamp": ["#0b2a18", "#116b38", "#1a8a48", "#27a85a", "#34c76f", "#6fd896", "#a9e8be", "#e3f7ea"] },
+      "lit-ink": { "role": "primary", "displayName": "점등 잉크(워시 위 글자)", "canonical": "#116b38", "tonalRamp": ["#0b2a18", "#116b38", "#1a8a48", "#27a85a", "#34c76f", "#6fd896", "#a9e8be", "#e3f7ea"] },
+      "lit-wash": { "role": "primary", "displayName": "점등 워시", "canonical": "rgba(52, 199, 111, 0.14)", "tonalRamp": ["#0b2a18", "#116b38", "#1a8a48", "#27a85a", "#34c76f", "#6fd896", "#a9e8be", "#e3f7ea"] },
+      "board": { "role": "neutral", "displayName": "흑연 보드", "canonical": "#0f1115", "tonalRamp": ["#0f1115", "#1a1d22", "#2a2e35", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e6e8eb"] },
+      "board-raised": { "role": "neutral", "displayName": "보드 활성 칸", "canonical": "#1a1d22", "tonalRamp": ["#0f1115", "#1a1d22", "#2a2e35", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e6e8eb"] },
+      "board-seam": { "role": "neutral", "displayName": "보드 이음새", "canonical": "#2a2e35", "tonalRamp": ["#0f1115", "#1a1d22", "#2a2e35", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e6e8eb"] },
+      "board-ink": { "role": "neutral", "displayName": "보드 글자", "canonical": "#e6e8eb", "tonalRamp": ["#0f1115", "#1a1d22", "#2a2e35", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e6e8eb"] },
+      "board-muted": { "role": "neutral", "displayName": "보드 흐린 글자", "canonical": "#8a9099", "tonalRamp": ["#0f1115", "#1a1d22", "#2a2e35", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e6e8eb"] },
+      "ground": { "role": "neutral", "displayName": "바닥", "canonical": "#f3f4f6", "tonalRamp": ["#0f1115", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#e9ebef", "#f3f4f6"] },
+      "ground-deep": { "role": "neutral", "displayName": "바닥 가장자리", "canonical": "#e9ebef", "tonalRamp": ["#0f1115", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#e9ebef", "#f3f4f6"] },
+      "panel": { "role": "neutral", "displayName": "간유리 패널", "canonical": "rgba(255, 255, 255, 0.72)", "tonalRamp": ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.2)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0.5)", "rgba(255,255,255,0.72)", "rgba(255,255,255,0.78)", "rgba(255,255,255,0.95)", "#ffffff"] },
+      "panel-home": { "role": "neutral", "displayName": "간유리 패널(홈, 베드 위)", "canonical": "rgba(255, 255, 255, 0.78)", "tonalRamp": ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.2)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0.5)", "rgba(255,255,255,0.72)", "rgba(255,255,255,0.78)", "rgba(255,255,255,0.95)", "#ffffff"] },
+      "panel-solid": { "role": "neutral", "displayName": "불투명 흰색", "canonical": "#ffffff", "tonalRamp": ["#0f1115", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6", "#ffffff"] },
+      "seam": { "role": "neutral", "displayName": "헤어라인 이음새", "canonical": "#e3e5e9", "tonalRamp": ["#0f1115", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#e9ebef", "#f3f4f6"] },
+      "seam-strong": { "role": "neutral", "displayName": "진한 이음새(hover)", "canonical": "#c9cdd3", "tonalRamp": ["#0f1115", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#e9ebef", "#f3f4f6"] },
+      "ink": { "role": "neutral", "displayName": "잉크", "canonical": "#0f1115", "tonalRamp": ["#0f1115", "#22262d", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6"] },
+      "ink-raised": { "role": "neutral", "displayName": "잉크 hover", "canonical": "#22262d", "tonalRamp": ["#0f1115", "#22262d", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6"] },
+      "ink-2": { "role": "neutral", "displayName": "보조 잉크", "canonical": "#3f4650", "tonalRamp": ["#0f1115", "#22262d", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6"] },
+      "ink-3": { "role": "neutral", "displayName": "메타 잉크", "canonical": "#6b7280", "tonalRamp": ["#0f1115", "#22262d", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6"] },
+      "ink-4": { "role": "neutral", "displayName": "비활성 잉크", "canonical": "#8a9099", "tonalRamp": ["#0f1115", "#22262d", "#3f4650", "#6b7280", "#8a9099", "#c9cdd3", "#e3e5e9", "#f3f4f6"] },
+      "scrim": { "role": "neutral", "displayName": "스크림", "canonical": "rgba(15, 17, 21, 0.45)", "tonalRamp": ["rgba(15,17,21,0.9)", "rgba(15,17,21,0.75)", "rgba(15,17,21,0.6)", "rgba(15,17,21,0.45)", "rgba(15,17,21,0.25)", "rgba(15,17,21,0.18)", "rgba(15,17,21,0.08)", "rgba(15,17,21,0.02)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "페이지에 하나뿐인 숫자. 홈 보드의 D-day(보드 안 lh 1, 데스크톱 56px 고정)와 홈 투표 패널의 참석 인원." },
+      "title": { "displayName": "Title", "purpose": "h1, 보드 제목, 행 라벨, 모달 제목. 본문과 같은 15px, 700으로만 구분." },
+      "body": { "displayName": "Body", "purpose": "본문 400, 버튼 600, 세그먼트 값 700. 전역 tabular-nums, -0.01em." },
+      "label": { "displayName": "Label", "purpose": "섹션 제목·세그먼트 라벨·폼 라벨·표 머리(0.04em)는 대문자. 메타·칩·토스트는 같은 12px 600, 대문자 변환 없음. 보드 위에서는 board-muted." }
+    },
+    "shadows": [
+      { "name": "tabbar-lift", "value": "0 -8px 24px rgba(15, 17, 21, 0.08)", "purpose": "하단 고정 탭바가 콘텐츠 위에 떠 있음을 알리는 위쪽 번짐. 레일에는 없음." },
+      { "name": "modal", "value": "0 16px 40px rgba(15, 17, 21, 0.18)", "purpose": "스크림 위 380px 모달·dialog." },
+      { "name": "toast", "value": "0 10px 30px rgba(15, 17, 21, 0.25)", "purpose": "다크 토스트." },
+      { "name": "lit-ring", "value": "0 0 0 3px rgba(52, 199, 111, 0.14)", "purpose": "8px 점등 점의 후광. 깊이가 아닌 점등 장치. 다른 요소에 확장하지 않는다." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "유일한 이징. 모든 전이와 점등 애니메이션." },
+      { "name": "seg-lit", "value": "@keyframes seg-lit { from { background: var(--board); color: var(--board-muted); } to { background: var(--board-raised); color: var(--board-ink); } } 0.6s var(--ease-out) both; 2번째 세그먼트 delay 0.12s; .board-line delay 0.24s", "purpose": "로드 시 보드 세그먼트가 순서대로 점등되는 단 하나의 저작된 순간. prefers-reduced-motion: animation none." },
+      { "name": "button-transition", "value": "background 0.15s, border-color 0.15s, transform 0.15s var(--ease-out); :active translateY(1px)", "purpose": "버튼 hover/active." },
+      { "name": "toast-enter", "value": "opacity 0.2s var(--ease-out), transform 0.3s var(--ease-out); translateY(6px) -> 0; 1800ms 뒤 해제", "purpose": "토스트 등장·퇴장." }
+    ],
+    "breakpoints": [
+      { "name": "ledger-tiles-3col", "value": "520px" },
+      { "name": "result-table-scroll", "value": "600px (max-width)" },
+      { "name": "desktop-rail", "value": "900px" }
+    ],
+    "shell": {
+      "tabbarHeight": "64px",
+      "railWidth": "76px",
+      "contentMax": { "mobile": "560px", "desktop": "960px" },
+      "gutter": { "mobile": "16px", "desktop": "32px" },
+      "tapTarget": "44px",
+      "backdropFilter": { "panel": "blur(14px) saturate(1.1)", "banner": "blur(12px)", "scrim": "blur(6px)" },
+      "focusRing": "outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 12px (보드 위 링크: outline-color var(--board-ink), offset -4px)",
+      "selection": "background var(--ink), color #fff",
+      "scrollbar": "thin, 6px, thumb var(--seam-strong), radius 12px",
+      "icons": "24 grid, stroke 1.75, round cap/join, currentColor, fill none, rendered 22px in shell"
+    }
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "불투명 흰색 + 헤어라인. 블록 폭, 44px. hover는 테두리만 진해지고 active는 1px 내려간다.",
+      "html": "<button class=\"ds-btn\">링크 복사</button>",
+      "css": ".ds-btn { width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: var(--panel-solid, #fff); color: var(--ink, #0f1115); font: 600 15px/1.55 \"Pretendard Variable\", Pretendard, system-ui, sans-serif; letter-spacing: -0.01em; cursor: pointer; transition: background .15s cubic-bezier(.16,1,.3,1), border-color .15s cubic-bezier(.16,1,.3,1), transform .15s cubic-bezier(.16,1,.3,1); } .ds-btn:hover { border-color: var(--seam-strong, #c9cdd3); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--ink, #0f1115); outline-offset: 2px; } .ds-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "잉크 채움. 패널당 하나. 강조색은 절대 쓰지 않는다.",
+      "html": "<button class=\"ds-btn-primary\">투표하기</button>",
+      "css": ".ds-btn-primary { width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid var(--ink, #0f1115); border-radius: var(--r, 12px); background: var(--ink, #0f1115); color: #fff; font: 600 15px/1.55 \"Pretendard Variable\", Pretendard, system-ui, sans-serif; letter-spacing: -0.01em; cursor: pointer; transition: background .15s cubic-bezier(.16,1,.3,1), transform .15s cubic-bezier(.16,1,.3,1); } .ds-btn-primary:hover { background: #22262d; } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ink, #0f1115); outline-offset: 2px; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "투명 + 점선, 위 24px 마진으로 혼자 선다. hover에서만 실선·잉크.",
+      "html": "<button class=\"ds-btn-destructive\">투표 취소</button>",
+      "css": ".ds-btn-destructive { width: 100%; min-height: 44px; margin-top: 24px; padding: 10px 16px; border: 1px dashed var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: transparent; color: var(--ink-2, #3f4650); font: 600 15px/1.55 \"Pretendard Variable\", Pretendard, system-ui, sans-serif; letter-spacing: -0.01em; cursor: pointer; transition: border-color .15s cubic-bezier(.16,1,.3,1), color .15s cubic-bezier(.16,1,.3,1); } .ds-btn-destructive:hover { color: var(--ink, #0f1115); border-style: solid; } .ds-btn-destructive:active { transform: translateY(1px); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--ink, #0f1115); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "불투명 흰색, 헤어라인, 44px, 16px 글자(iOS 확대 방지). 포커스는 테두리가 잉크로.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">비밀번호</span><input class=\"ds-input\" type=\"password\" placeholder=\"회장 비밀번호\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: \"Pretendard Variable\", Pretendard, system-ui, sans-serif; } .ds-field-label { font-size: 12px; font-weight: 600; color: var(--ink-3, #6b7280); } .ds-input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: var(--panel-solid, #fff); color: var(--ink, #0f1115); font: inherit; font-size: 16px; } .ds-input::placeholder { color: var(--ink-3, #6b7280); } .ds-input:focus { border-color: var(--ink, #0f1115); outline: none; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "12px 알약, 헤어라인, Label 600. 진행 중/확정만 점등색 테두리, 마감은 취소선.",
+      "html": "<span class=\"ds-chip\">예정</span> <span class=\"ds-chip ds-chip--lit\">진행 중</span> <span class=\"ds-chip ds-chip--contacted\">연락함</span> <span class=\"ds-chip ds-chip--closed\">마감</span> <span class=\"ds-chip ds-chip--unparsed\">미분석</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: var(--panel-solid, #fff); color: var(--ink-2, #3f4650); font: 600 12px/1.5 \"Pretendard Variable\", Pretendard, system-ui, sans-serif; } .ds-chip--lit { border-color: var(--lit, #34c76f); color: var(--lit-ink, #116b38); background: var(--lit-wash, rgba(52,199,111,.14)); } .ds-chip--contacted { color: var(--ink, #0f1115); border-color: var(--seam-strong, #c9cdd3); } .ds-chip--closed { color: var(--ink-4, #8a9099); text-decoration: line-through; } .ds-chip--unparsed { border-style: dashed; color: var(--ink-3, #6b7280); }"
+    },
+    {
+      "name": "Glass Panel",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "간유리 패널. 반투명 흰색 + blur, 1px 헤어라인, 그림자 없음. 제목은 대문자 라벨, 디스플레이 숫자 하나, 버튼 2열.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">이번 주 투표</h2><p class=\"ds-display\">6<small>명 참석</small></p><p class=\"ds-meta\">마감 10/13(월) 13:00 · 진행 중</p><div class=\"ds-card-actions\"><a class=\"ds-card-btn ds-card-btn--primary\" href=\"#\">투표하기</a><button class=\"ds-card-btn\">링크 복사</button></div></section>",
+      "css": ".ds-card { background: var(--panel, rgba(255,255,255,.72)); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); padding: 16px; box-shadow: none; min-width: 0; color: var(--ink, #0f1115); font-family: \"Pretendard Variable\", Pretendard, system-ui, sans-serif; font-variant-numeric: tabular-nums; } .ds-card-title { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3, #6b7280); } .ds-display { margin: 6px 0 2px; font-size: clamp(36px, 10vw, 56px); font-weight: 700; line-height: 1.1; letter-spacing: -.03em; } .ds-display small { font-size: 15px; font-weight: 600; color: var(--ink-3, #6b7280); margin-left: 4px; letter-spacing: 0; } .ds-meta { margin: 0; font-size: 12px; color: var(--ink-3, #6b7280); } .ds-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-top: 12px; } .ds-card-btn { display: grid; place-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: var(--panel-solid, #fff); color: var(--ink, #0f1115); font: 600 15px/1.55 inherit; text-decoration: none; cursor: pointer; } .ds-card-btn:hover { border-color: var(--seam-strong, #c9cdd3); } .ds-card-btn--primary { background: var(--ink, #0f1115); color: #fff; border-color: var(--ink, #0f1115); } .ds-card-btn--primary:hover { background: #22262d; } .ds-card-btn:focus-visible { outline: 2px solid var(--ink, #0f1115); outline-offset: 2px; }"
+    },
+    {
+      "name": "Scoreboard",
+      "kind": "custom",
+      "refersTo": "board",
+      "description": "시그니처. 흑연 보드가 날짜·D-day·세그먼트 상태를 든다. 로드 시 세그먼트가 순서대로 점등(0.6s, 0/0.12s, 라인 0.24s). 켜진 칸(.is-lit)만 점등 점.",
+      "html": "<section class=\"ds-board\"><div class=\"ds-board-row\"><div><p class=\"ds-board-label\">이번 주</p><p class=\"ds-board-title\">10/17 토</p></div><p class=\"ds-board-display\">D-2</p></div><div class=\"ds-segments\"><div class=\"ds-segment ds-segment--lit\"><span class=\"ds-board-label\">투표</span><b>진행 중</b></div><div class=\"ds-segment\"><span class=\"ds-board-label\">매치</span><b>확정</b></div></div><div class=\"ds-board-lines\"><p class=\"ds-board-line\">10/17(토) 08:00 · 수원 FC 아레나 · 상대 팀</p></div></section>",
+      "css": "@keyframes ds-seg-lit { from { background: var(--board, #0f1115); color: var(--board-muted, #8a9099); } to { background: var(--board-raised, #1a1d22); color: var(--board-ink, #e6e8eb); } } .ds-board { background: var(--board, #0f1115); color: var(--board-ink, #e6e8eb); border: 1px solid var(--board-seam, #2a2e35); border-radius: var(--r, 12px); padding: 14px 16px; font-family: \"Pretendard Variable\", Pretendard, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.01em; } .ds-board-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; } .ds-board-label { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--board-muted, #8a9099); } .ds-board-title { margin: 2px 0 0; font-size: 15px; font-weight: 700; } .ds-board-display { margin: 0; font-size: clamp(36px, 10vw, 56px); font-weight: 700; line-height: 1; letter-spacing: -.03em; } .ds-segments { display: flex; gap: 1px; margin-top: 12px; background: var(--board-seam, #2a2e35); border-radius: var(--r, 12px); overflow: hidden; } .ds-segment { flex: 1 1 0; min-width: 0; padding: 10px 12px; background: var(--board-raised, #1a1d22); display: grid; gap: 2px; animation: ds-seg-lit .6s cubic-bezier(.16,1,.3,1) both; } .ds-segment:nth-child(2) { animation-delay: .12s; } .ds-segment b { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-segment--lit b::before { content: \"\"; display: inline-block; width: 8px; height: 8px; margin-right: 7px; vertical-align: 1px; border-radius: 50%; background: var(--lit, #34c76f); box-shadow: 0 0 0 3px var(--lit-wash, rgba(52,199,111,.14)); } .ds-board-lines { margin-top: 10px; border-top: 1px solid var(--board-seam, #2a2e35); padding-top: 10px; display: grid; gap: 4px; } .ds-board-line { margin: 0; font-size: 15px; font-weight: 600; animation: ds-seg-lit .6s cubic-bezier(.16,1,.3,1) both; animation-delay: .24s; } .ds-board-line::before { content: \"확정 매치\"; display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--board-muted, #8a9099); } @media (prefers-reduced-motion: reduce) { .ds-segment, .ds-board-line { animation: none; } }"
+    },
+    {
+      "name": "Row List",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "같은 간유리 재질을 헤어라인으로 60px 행으로 나눈 바로 가기 목록. 왼쪽 라벨+부제, 오른쪽 숫자 또는 잉크 알약. 주의할 것이 있으면 부제 앞에 점등 점.",
+      "html": "<nav class=\"ds-rows\"><a class=\"ds-row\" href=\"#\"><span class=\"ds-row-main\"><span class=\"ds-row-label\">장부</span><span class=\"ds-row-sub ds-lit-dot\">이번 달 미납 2명 · 60,000원</span></span><span class=\"ds-row-end\"><span class=\"ds-row-figure\">1,240,000원</span></span></a><a class=\"ds-row\" href=\"#\"><span class=\"ds-row-main\"><span class=\"ds-row-label\">배정표</span><span class=\"ds-row-sub\">이번 주 참석자로 키퍼·휴식 배정</span></span><span class=\"ds-row-end\"><span class=\"ds-row-action\">배정표 만들기</span></span></a></nav>",
+      "css": ".ds-rows { display: grid; border: 1px solid var(--seam, #e3e5e9); border-radius: var(--r, 12px); background: rgba(255,255,255,.78); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); overflow: hidden; font-family: \"Pretendard Variable\", Pretendard, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.01em; } .ds-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 12px 16px; border-top: 1px solid var(--seam, #e3e5e9); color: var(--ink, #0f1115); text-decoration: none; font-size: 15px; } .ds-row:first-child { border-top: 0; } .ds-row:hover { background: rgba(255,255,255,.95); } .ds-row:focus-visible { outline: 2px solid var(--ink, #0f1115); outline-offset: -2px; } .ds-row-main { display: grid; gap: 2px; min-width: 0; } .ds-row-label { font-weight: 700; } .ds-row-sub { font-size: 12px; color: var(--ink-3, #6b7280); } .ds-lit-dot::before { content: \"\"; display: inline-block; width: 8px; height: 8px; margin-right: 7px; vertical-align: 1px; border-radius: 50%; background: var(--lit, #34c76f); box-shadow: 0 0 0 3px var(--lit-wash, rgba(52,199,111,.14)); } .ds-row-end { flex-shrink: 0; text-align: right; } .ds-row-figure { font-weight: 700; } .ds-row-action { font-size: 12px; font-weight: 700; padding: 8px 12px; border: 1px solid var(--ink, #0f1115); border-radius: var(--r, 12px); background: var(--ink, #0f1115); color: #fff; white-space: nowrap; }"
+    },
+    {
+      "name": "Tabbar",
+      "kind": "nav",
+      "refersTo": "tabbar",
+      "description": "모바일 하단 고정 다크 탭바. 홈·투표·매칭·배정표·장부·더보기. 아이콘 22px 1.75 스트로크 + 11px 라벨. 활성은 board-raised 배경. 데스크톱(≥900px)은 같은 재질의 76px 왼쪽 레일로 바뀐다.",
+      "html": "<nav class=\"ds-tabbar\" aria-label=\"주 메뉴\"><a href=\"#\" aria-current=\"page\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10.5 12 4l8 6.5V20h-5.5v-5h-5v5H4z\"/></svg><span>홈</span></a><a href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"15\" rx=\"2\"/><path d=\"M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4\"/></svg><span>투표</span></a><a href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 4c2.5 2.3 2.5 13.7 0 16M4 12h16M6 7.5c3 1.5 9 1.5 12 0M6 16.5c3-1.5 9-1.5 12 0\"/></svg><span>매칭</span></a><a href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M12 5v14M3 12h18\"/><circle cx=\"12\" cy=\"12\" r=\"2.2\"/></svg><span>배정표</span></a><a href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"6\" width=\"18\" height=\"13\" rx=\"2\"/><path d=\"M3 10h18M7 15h4\"/></svg><span>장부</span></a><a href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"12\" r=\"1.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/><circle cx=\"18\" cy=\"12\" r=\"1.6\"/></svg><span>더보기</span></a></nav>",
+      "css": ".ds-tabbar { display: flex; justify-content: center; padding: 6px 8px; background: var(--board, #0f1115); border-top: 1px solid var(--board-seam, #2a2e35); box-shadow: 0 -8px 24px rgba(15,17,21,.08); font-family: \"Pretendard Variable\", Pretendard, system-ui, sans-serif; } .ds-tabbar a { flex: 1 1 0; max-width: 96px; min-height: 52px; display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--board-muted, #8a9099); font-size: 11px; font-weight: 600; letter-spacing: .02em; text-decoration: none; border-radius: var(--r, 12px); } .ds-tabbar a[aria-current=\"page\"] { color: var(--board-ink, #e6e8eb); background: var(--board-raised, #1a1d22); } .ds-tabbar a:hover { color: var(--board-ink, #e6e8eb); } .ds-tabbar a:focus-visible { outline: 2px solid var(--board-ink, #e6e8eb); outline-offset: -4px; }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "다크 토스트. 탭바 위 14px 중앙, opacity .2s + 6px 상승 .3s, 1.8초 뒤 사라짐.",
+      "html": "<div class=\"ds-toast\" role=\"status\">복사했습니다. 카톡에 붙여넣어 주세요.</div>",
+      "css": ".ds-toast { display: inline-block; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: var(--r, 12px); border: 1px solid var(--board-seam, #2a2e35); background: var(--board, #0f1115); color: var(--board-ink, #e6e8eb); font: 600 12px/1.5 \"Pretendard Variable\", Pretendard, system-ui, sans-serif; box-shadow: 0 10px 30px rgba(15,17,21,.25); transition: opacity .2s cubic-bezier(.16,1,.3,1), transform .3s cubic-bezier(.16,1,.3,1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "구장 전광판",
+    "overview": "경기장 전광판은 날짜·숫자·상태만 들고, 그 외에는 아무것도 말하지 않는다. 이 시스템도 그렇다. 흑연 보드(board)가 \"이번 주 10/17 토 · D-2 · 투표 진행 중 · 매치 확정\"을 한 줄로 들고, 그 아래 밝은 바닥(ground) 위에 간유리 패널이 놓여 투표·공유·장부 같은 실제 작업을 받는다. 보드는 읽는 곳, 패널은 누르는 곳이다.\n\n밀도는 휴대폰 한 손 조작 기준이다. 글자 크기는 본문 15 / 라벨 12 / 디스플레이 숫자 하나, 세 단계만 쓰고, 모든 모서리는 12px 하나로 깎는다. 깊이는 그림자가 아니라 1px 헤어라인 이음새와 투명도(간유리)로 만든다. 색은 그레이스케일이고, 강조색 lit(#34c76f)는 \"바뀐 것·지금 할 일이 있는 것\"에만 점등되는 작은 점이다. 버튼은 강조색을 쓰지 않는다. 거부한 기본값: 같은 크기 카드가 아이콘+제목+설명으로 줄지어 선 관리자 대시보드.\n\n페이지 간 공용 셸(탭바·레일·인증 바·모달·토스트)과 홈 표면은 이 시스템으로 완성되어 있다. 투표·매칭·장부·배정표·내 현황·회칙·관리 페이지는 styles.css를 상속하지만 페이지별 섹션은 아직 재구성 전의 과도기 상태다.",
+    "keyCharacteristics": [
+      "흑연 보드(읽기) + 밝은 바닥 위 간유리 패널(작업)의 두 재질",
+      "글자 크기 3단계, 표형 숫자(tabular-nums) 전역",
+      "반경 토큰 하나(12px), 그림자 대신 1px 헤어라인",
+      "강조색 1개, 점등(8px 점·배지)에만, 버튼에는 절대 없음",
+      "모션 한 순간: 로드 시 보드 세그먼트가 순서대로 점등"
+    ],
+    "rules": [
+      { "name": "The Lit-Only Rule", "body": "강조색은 \"바뀐 것·주의할 것\"의 점등에만 쓴다. 8px 점(box-shadow: 0 0 0 3px lit-wash 링)과 open/confirmed 배지가 전부다. 버튼, 링크, 제목, 아이콘에 강조색이 보이면 위반이다.", "section": "colors" },
+      { "name": "The Two Inks Rule", "body": "글자색은 보드 위에서는 board-ink/board-muted 두 개, 바닥 위에서는 ink~ink-4 네 단계만 쓴다. 보드 위에 ink, 바닥 위에 board-ink를 올리지 않는다.", "section": "colors" },
+      { "name": "The Three Sizes Rule", "body": "15 / 12 / display 세 단계만 쓴다. 새 크기가 필요하다고 느끼면 굵기(400/600/700)나 잉크 단계로 해결한다. 건드리지 않는 두 예외: 탭바·레일 글자 11px(셸 전용), 입력 16px(iOS 확대 방지).", "section": "typography" },
+      { "name": "The One Display Rule", "body": "디스플레이 숫자는 페이지에 하나다. 홈은 보드의 D-day가 그것이고, 패널의 인원 수는 바닥 위에서 같은 토큰을 쓰는 유일한 예외다. 두 숫자가 같은 보드에 서지 않는다.", "section": "typography" },
+      { "name": "The Hairline Rule", "body": "바닥 위에서 요소를 나누는 것은 1px seam뿐이다. 패널 경계, 행 사이, 표 행, 칩 테두리, 입력 테두리, 섹션 내부 구분(.seam) 모두 같은 선. hover는 seam-strong으로 한 단계 진해질 뿐 그림자를 얻지 않는다.", "section": "elevation" },
+      { "name": "The Floating-Only Shadow Rule", "body": "그림자는 fixed 레이어(탭바·모달·토스트)에만 있다. 카드, 버튼, 입력, 보드에 그림자를 더하면 위반이다.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do 상태의 변화·지금 할 일에만 강조색을 켠다: 8px lit 점 + 3px lit-wash 링, 또는 lit 테두리 배지. 그 외는 모두 그레이스케일.",
+      "Do 모든 요소를 12px 하나로 깎고(--r), 바닥 위 구분은 1px seam, 보드 위 구분은 1px board-seam으로만 한다.",
+      "Do 글자 크기를 15 / 12 / display 세 단계로 고정하고 굵기(400/600/700)와 잉크 단계(ink~ink-4)로 위계를 만든다. 숫자는 항상 tabular-nums.",
+      "Do 페이지당 디스플레이 숫자 하나. 홈은 보드의 D-day.",
+      "Do 파괴적 버튼은 투명+점선으로, 위 24px 마진을 두어 다른 버튼과 떨어뜨린다.",
+      "Do 아이콘은 ICONS 한 벌(24 그리드, 1.75px 스트로크, 둥근 캡)만 icon(name, 22)로 렌더한다.",
+      "Do 터치 타깃 44px, 375px 폭에서 가로 넘침 없이. 보드·패널·버튼·입력은 모두 min-width: 0/overflow-wrap: anywhere로 긴 한글을 접는다.",
+      "Do 색·반경·크기는 styles.css의 :root 토큰(var(--…))만 쓴다."
+    ],
+    "donts": [
+      "Don't 버튼·링크·제목·아이콘에 강조색을 쓰지 않는다. 프라이머리 버튼은 ink 채움이다.",
+      "Don't 카드·버튼·입력·보드에 그림자를 더하지 않는다. 그림자는 fixed 레이어(탭바·모달·토스트) 셋뿐이다.",
+      "Don't 패널 안에 패널(.card 안 .card/.section)을 넣지 않는다. 내부 구분은 .seam 헤어라인으로.",
+      "Don't 페이지 HTML에 인라인 style=나 원시 hex를 쓰지 않는다.",
+      "Don't 이모지를 아이콘으로 쓰지 않는다(카톡 공유 문구 안의 👍는 제품 언어이므로 예외).",
+      "Don't 새 글자 크기(13, 14, 18, 20…)나 두 번째 반경, 두 번째 강조색을 들이지 않는다.",
+      "Don't 보드 위에 ink 계열, 바닥 위에 board-ink 계열 글자를 올리지 않는다.",
+      "Don't 상단 가로 내비(.topnav)를 되살리지 않는다. 셸은 탭바(모바일)와 레일(데스크톱)이다."
+    ]
+  }
+}

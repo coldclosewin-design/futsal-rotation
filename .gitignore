@@ -1,3 +1,4 @@
 .claude/
 node_modules/
-.impeccable/
+.impeccable/*
+!.impeccable/design.json
