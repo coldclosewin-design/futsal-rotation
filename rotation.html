@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261016b">
+  <link rel="stylesheet" href="styles.css?v=20261016c">
 </head>
 <body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
 
   <main class="rotation-page page-grid">
+    <div id="rotation-member" class="identity-line page-wide"></div>
     <section class="board page-board" aria-label="배정 요약">
       <div class="board-row"><div><p class="label">키퍼·휴식 배정</p><p id="rotation-board-date" class="board-title">오늘</p></div><p id="rotation-count" class="display" aria-label="선택된 참가자 수">0</p></div>
       <div class="segments">
@@ -20,7 +21,6 @@
       </div>
     </section>
   <div class="section page-wide" id="rotation-integration">
-    <div id="rotation-member"></div>
     <button type="button" id="load-attendees" disabled>이번 주 참석자 불러오기</button>
     <p id="rotation-notice" role="status">팀 연결을 확인하는 중입니다. 수동 배정은 그대로 사용할 수 있습니다.</p>
   </div>
@@ -99,7 +99,8 @@
       document.getElementById("rotation-minimum").textContent = count >= minimum ? "충족" : `${minimum}명 필요`;
       document.getElementById("rotation-min-segment").classList.toggle("is-dim", count < minimum);
       document.getElementById("rotation-connection").textContent = integration.connected ? "팀 연결" : "수동 배정";
-      document.getElementById("rotation-board-date").textContent = integration.connected ? match?.match_date || integration.poll?.match_date || "오늘" : "오늘";
+      const boardDate = integration.connected ? match?.match_date || integration.poll?.match_date : null;
+      document.getElementById("rotation-board-date").textContent = boardDate ? ExicanRules.pollTitle({ match_date: boardDate }).replace(" 경기", "") : "오늘";
     }
     document.getElementById("rotation-match").addEventListener("change", updateRotationBoard);
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
