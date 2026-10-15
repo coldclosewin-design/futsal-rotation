@@ -154,7 +154,8 @@
         updateWeek();
         const membersRequest = ExicanData.members();
         const pollRequest = ExicanData.upcomingPolls().then(async (upcoming) => {
-          const regular = upcoming.find((row) => !ExicanRules.isSpecialPoll(row)) || null;
+          // 정기(토요일) 투표가 없으면 가장 가까운 투표를 카드에 보여준다
+          const regular = upcoming.find((row) => !ExicanRules.isSpecialPoll(row)) || upcoming[0] || null;
           const [votes, members] = await Promise.all([regular ? ExicanData.votes(regular.id) : [], membersRequest]);
           return { poll: upcoming[0] || null, weeklyPoll: regular, upcoming,
             summary: regular ? ExicanRules.attendanceSummary(votes, members) : null };
@@ -172,6 +173,7 @@
         poll = ballot.status === "fulfilled" ? ballot.value.poll : null;
         weeklyPoll = ballot.status === "fulfilled" ? ballot.value.weeklyPoll : null;
         pollSummary = ballot.status === "fulfilled" ? ballot.value.summary : null;
+        get("home-poll-title").textContent = weeklyPoll ? ExicanRules.pollTitle(weeklyPoll) + " 투표" : "이번 주 투표";
         if (weeklyPoll) {
           const deadline = new Date(weeklyPoll.closes_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
           const status = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[ExicanRules.pollStatus(weeklyPoll, new Date().toISOString())];
@@ -183,7 +185,7 @@
         }
         get("share-vote").disabled = pollState !== "ready";
         const upcoming = ballot.status === "fulfilled" ? ballot.value.upcoming : [];
-        const specials = upcoming.filter(ExicanRules.isSpecialPoll);
+        const specials = upcoming.filter((row) => ExicanRules.isSpecialPoll(row) && row.id !== weeklyPoll?.id);
         const specialLink = get("home-special-polls");
         specialLink.hidden = upcoming.length < 2 || !specials.length;
         const specialTitle = specials.length ? specials[0].title ? `${specials[0].match_date.slice(5).split("-").map(Number).join("/")} ${specials[0].title}` : ExicanRules.pollTitle(specials[0]) : "";

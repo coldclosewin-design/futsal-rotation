@@ -106,7 +106,7 @@ test("pollTitle은 제목을 보존하고 없으면 실제 요일을 계산한�
 
 test("특별 투표는 제목 또는 토요일 이외 날짜로 구분하고 벌금 설정과는 독립이다", () => {
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", fines: false }), false);
-  assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", title: "이벤트" }), true);
+  assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", title: "이벤트" }), false);
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-22" }), true);
 });
 

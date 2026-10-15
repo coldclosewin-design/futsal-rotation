@@ -36,8 +36,9 @@
     return `${month}/${day}(${weekday}) 경기`;
   }
 
+  // 정기 투표 = 토요일 경기. 제목은 붙여도 되며 분류에 영향을 주지 않는다.
   function isSpecialPoll(poll) {
-    return Boolean(poll.title) || new Date(`${poll.match_date}T00:00:00Z`).getUTCDay() !== 6;
+    return new Date(`${poll.match_date}T00:00:00Z`).getUTCDay() !== 6;
   }
 
   function attendanceSummary(votes, members) {
