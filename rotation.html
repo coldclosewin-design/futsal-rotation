@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261016c">
+  <link rel="stylesheet" href="styles.css?v=20261016d">
 </head>
 <body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
@@ -100,7 +100,7 @@
       document.getElementById("rotation-min-segment").classList.toggle("is-dim", count < minimum);
       document.getElementById("rotation-connection").textContent = integration.connected ? "팀 연결" : "수동 배정";
       const boardDate = integration.connected ? match?.match_date || integration.poll?.match_date : null;
-      document.getElementById("rotation-board-date").textContent = boardDate ? ExicanRules.pollTitle({ match_date: boardDate }).replace(" 경기", "") : "오늘";
+      document.getElementById("rotation-board-date").textContent = boardDate ? ExicanRules.pollTitle({ match_date: boardDate }).replace(" 경기", "").replace(/\((.)\)$/, " $1") : "오늘";
     }
     document.getElementById("rotation-match").addEventListener("change", updateRotationBoard);
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
@@ -120,18 +120,30 @@
           document.getElementById("load-attendees").disabled = false;
           document.getElementById("rotation-notice").textContent = demo ? "데모 투표와 매치에 연결되었습니다. 저장 결과는 새로고침하면 초기화됩니다." : "이번 주 투표 참석자를 불러올 수 있습니다.";
           if (demo) {
-            const button = document.createElement("button");
-            button.type = "button"; button.textContent = "내 이름 선택 / 변경";
-            button.onclick = async () => {
-              try {
-                ExicanMember.clear();
-                const member = await ExicanMember.ensure(members);
-                integration.admin = member.is_president;
-                button.textContent = `내 이름: ${member.name} · 변경`;
-                await refreshSave();
-              } catch (error) { showToast(error.message); }
+            // 다른 페이지와 같은 신원 줄: 저장된 이름이 있으면 뱃지, 없으면 선택 버튼
+            const container = document.getElementById("rotation-member");
+            const renderIdentity = () => {
+              const current = members.find((member) => member.id === ExicanMember.getId());
+              container.textContent = "";
+              if (current) {
+                integration.admin = current.is_president;
+                ExicanMember.renderBadge(container, current, async () => {
+                  ExicanMember.clear();
+                  await ExicanMember.ensure(members);
+                  renderIdentity();
+                  await refreshSave();
+                });
+                return;
+              }
+              const button = document.createElement("button");
+              button.type = "button"; button.className = "secondary"; button.textContent = "내 이름 선택";
+              button.onclick = async () => {
+                try { await ExicanMember.ensure(members); renderIdentity(); await refreshSave(); }
+                catch (error) { showToast(error.message); }
+              };
+              container.appendChild(button);
             };
-            document.getElementById("rotation-member").appendChild(button);
+            renderIdentity();
           }
           return members;
         }
