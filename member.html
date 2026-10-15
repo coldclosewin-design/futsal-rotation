@@ -13,7 +13,7 @@
     <section class="board page-board" aria-label="내 현황 요약">
       <div class="board-row money-row"><div><p class="label">내 현황</p><p id="member-board-name" class="board-title">멤버 확인 중</p><p id="member-board-month" class="label">이번 달 미납</p></div><p id="member-outstanding" class="display">—</p></div>
       <div class="segments">
-        <div id="member-unpaid-segment" class="segment"><span class="label">12주 참석률</span><b id="member-rate">—</b><span id="member-unpaid-label" class="label"></span></div>
+        <div class="segment"><span class="label">12주 참석률</span><b id="member-rate">—</b></div>
         <div class="segment"><span class="label">투표 참여율</span><b id="member-vote-rate">—</b></div>
         <div class="segment"><span class="label">키퍼 누적</span><b id="member-gk">—</b></div>
       </div>
@@ -44,8 +44,7 @@
       function resetBoard() {
         get("member-board-name").textContent = "멤버 확인 중";
         for (const id of ["member-outstanding", "member-rate", "member-vote-rate", "member-gk"]) get(id).textContent = "—";
-        get("member-unpaid-segment").classList.remove("is-lit");
-        get("member-unpaid-label").textContent = "";
+        get("member-outstanding").classList.remove("is-lit");
         get("member-picker").hidden = true;
       }
 
@@ -82,8 +81,7 @@
           get("member-rate").textContent = rate.rate === null ? "기록 없음" : `${Math.round(rate.rate * 100)}%`;
           get("member-vote-rate").textContent = eligiblePolls.length ? `${Math.round(voted / eligiblePolls.length * 100)}%` : "기록 없음";
           get("member-gk").textContent = `${rotation.gk}회`;
-          get("member-unpaid-segment").classList.toggle("is-lit", total.outstanding > 0);
-          get("member-unpaid-label").textContent = total.outstanding > 0 ? "미납 확인 필요" : "";
+          get("member-outstanding").classList.toggle("is-lit", total.outstanding > 0);
           get("member-select").innerHTML = people.map((row) => `<option value="${e(row.id)}" ${row.id === selected ? "selected" : ""}>${e(row.name)}</option>`).join("");
           get("member-picker").hidden = false;
           get("member-content").innerHTML = `<section class="card"><h2>${e(month)} 납부</h2><dl class="rows flat-rows">${[["회비", total.due], ["벌금", total.fine], ["면제", total.exempt], ["환급", total.refund], ["정산 완료", total.settled], ["전 기간 미정산", outstanding]].map(([label, amount]) => `<div class="row"><dt class="row-label">${label}</dt><dd class="row-figure">${formatWon(amount)}</dd></div>`).join("")}</dl></section>

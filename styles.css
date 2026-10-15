@@ -575,7 +575,8 @@ tbody th { font-weight: 600; }
 .page-board .board-row > * { min-width: 0; }
 .page-board .display { text-align: right; overflow-wrap: anywhere; }
 .page-board .segment { padding: 10px 8px; }
-.page-board .segment b { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.page-board .segment b { white-space: nowrap; overflow: visible; letter-spacing: -0.02em; }
+.page-board .display.is-lit::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 10px; vertical-align: 0.35em; border-radius: 50%; background: var(--lit); box-shadow: 0 0 0 4px var(--lit-wash); }
 .page-board .label { overflow-wrap: anywhere; }
 .page-board .money-row { display: block; }
 .page-board .money-row .display { margin-top: 8px; }
