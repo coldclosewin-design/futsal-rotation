@@ -549,7 +549,7 @@ tbody th { font-weight: 600; }
 
 /* 홈: 보드가 놓인 어두운 베드. 첫 패널이 베드 하단을 덮어 간유리가 실제로 흐린다 */
 .bed { position: relative; margin: 0 calc(-1 * var(--gutter)); padding: 12px var(--gutter) 44px; background: var(--board); border-radius: 0 0 calc(var(--r) * 2) calc(var(--r) * 2); }
-.bed .home-board { margin: 0; border-color: var(--board-seam); background: var(--board); }
+.bed .home-board { margin: 0; border: 0; padding: 6px 0 0; background: transparent; }
 .home-page .hub-grid { position: relative; margin-top: -32px; }
 .home-page .card { background: rgba(255, 255, 255, 0.78); }
 .board-lines { margin-top: 10px; border-top: 1px solid var(--board-seam); padding-top: 10px; display: grid; gap: 4px; }
@@ -570,6 +570,6 @@ tbody th { font-weight: 600; }
 .row-action { font-size: var(--fs-label); font-weight: 700; padding: 8px 12px; border: 1px solid var(--ink); border-radius: var(--r); background: var(--ink); color: #fff; white-space: nowrap; }
 .row .ledger-home-mine { color: var(--ink); }
 @media (min-width: 900px) {
-  .bed { margin: 0 -32px; padding: 12px 32px 44px; border-radius: 0 0 calc(var(--r) * 2) calc(var(--r) * 2); }
+  .bed { margin: 0; padding: 16px 20px 44px; border-radius: calc(var(--r) * 2); border: 1px solid var(--board-seam); }
   .home-page .hub-grid .rows { grid-column: 1 / -1; }
 }
