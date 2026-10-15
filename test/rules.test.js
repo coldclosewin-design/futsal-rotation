@@ -80,13 +80,34 @@ test("lateVoteRows 미투표 2명과 지각 1명만 벌금 부과하고 회장�
   ];
   assert.deepEqual(rules.lateVoteRows(poll, votes, roster, 5000, "2026-10-12"), ["m03", "m04", "m05"].map((id) => ({
     member_id: id, category: "fine_late_vote", amount: 5000, ref_poll_id: poll.id,
-    entry_date: "2026-10-12", note: "투표 마감(월 13:00) 미참여"
+    entry_date: "2026-10-12", note: "투표 마감 미참여"
   })));
 });
 
 test("lateVoteRows는 취소된 투표와 비활동 멤버를 제외한다", () => {
   assert.deepEqual(rules.lateVoteRows({ ...poll, cancelled: true }, [], members, 5000, "2026-10-12"), []);
   assert.deepEqual(rules.lateVoteRows(poll, [], [{ ...members[0], active: false }], 5000, "2026-10-12"), []);
+});
+
+test("벌금 제외 투표는 미투표·지각 투표 모두 벌금이 없고 기존 데이터는 그대로 부과한다", () => {
+  const ballot = [{ poll_id: poll.id, member_id: members[0].id, is_late: true }];
+  assert.deepEqual(rules.lateVoteRows({ ...poll, fines: false }, ballot, members, 5000, "2026-10-12"), []);
+  for (const fines of [undefined, true]) {
+    assert.equal(rules.lateVoteRows({ ...poll, fines }, ballot, members, 5000, "2026-10-12").length, members.length);
+  }
+});
+
+test("pollTitle은 제목을 보존하고 없으면 실제 요일을 계산한다", () => {
+  assert.equal(rules.pollTitle({ match_date: "2026-10-22", title: "개천절 특별 매치" }), "개천절 특별 매치");
+  assert.equal(rules.pollTitle({ match_date: "2026-10-17", title: null }), "10/17(토) 경기");
+  assert.equal(rules.pollTitle({ match_date: "2026-10-21" }), "10/21(수) 경기");
+  assert.equal(rules.pollTitle({ match_date: "2027-01-01", title: "" }), "1/1(금) 경기");
+});
+
+test("특별 투표는 제목 또는 토요일 이외 날짜로 구분하고 벌금 설정과는 독립이다", () => {
+  assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", fines: false }), false);
+  assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", title: "이벤트" }), true);
+  assert.equal(rules.isSpecialPoll({ match_date: "2026-10-22" }), true);
 });
 
 test("12명 월회비와 4주 이상 부상 1명의 50% 면제 행을 만든다", () => {

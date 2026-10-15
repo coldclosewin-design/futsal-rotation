@@ -1,0 +1,128 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { runInNewContext } = require("node:vm");
+const rules = require("../js/rules.js");
+const form = require("../js/poll-form.js");
+const fixture = require("./fixtures/demo-data.json");
+const source = readFileSync(join(__dirname, "../js/data.js"), "utf8");
+const now = "2026-10-15T12:00:00+09:00";
+
+function environment({ clock = now, live = false, role = "admin", respond = () => ({ data: [] }) } = {}) {
+  const calls = [];
+  class Clock extends Date {
+    constructor(...args) { super(...(args.length ? args : [clock])); }
+    static now() { return Date.parse(clock); }
+  }
+  const context = { Date: Clock, URLSearchParams, location: { search: live ? "" : "?demo=1" },
+    EXICAN_CONFIG: {}, ExicanRules: rules, isConfigured: () => true,
+    document: { querySelector: () => ({}) }, showToast: () => {},
+    fetch: async () => ({ ok: true, json: async () => structuredClone(fixture) }),
+    ExicanAuth: { getRole: async () => role, init: async () => ({ from(table) {
+      const call = { table, operations: [] };
+      calls.push(call);
+      const query = { then: (resolve, reject) => Promise.resolve(respond(call)).then(resolve, reject) };
+      for (const name of ["select", "gte", "eq", "order", "range", "insert", "single"]) {
+        query[name] = (...args) => { call.operations.push([name, ...args]); return query; };
+      }
+      return query;
+    } }) }
+  };
+  context.window = context;
+  runInNewContext(source, context);
+  return { data: context.ExicanData, calls };
+}
+
+test("데모는 지난 투표를 제외하고 정기·특별 투표의 날짜와 응답을 분리한다", async () => {
+  const { data } = environment();
+  const polls = await data.upcomingPolls(now);
+  assert.deepEqual(Array.from(polls, (poll) => poll.match_date), ["2026-10-17", "2026-10-22"]);
+  const [regular, special] = polls;
+  assert.equal(special.title, "개천절 특별 매치");
+  assert.equal(special.fines, false);
+  assert.equal(rules.pollStatus(special, now), "open");
+  assert.equal((await data.votes(special.id)).length, 3);
+  assert.ok((await data.votes(special.id)).every((row) => Date.parse(row.updated_at) <= Date.parse(now)));
+  await data.castVote(regular.id, "m12", "attend");
+  await data.castVote(special.id, "m12", "absent");
+  assert.equal((await data.votes(regular.id)).find((row) => row.member_id === "m12").choice, "attend");
+  assert.equal((await data.votes(special.id)).find((row) => row.member_id === "m12").choice, "absent");
+  await data.setPollCancelled(regular.id, true);
+  assert.equal((await data.currentPoll(now)).id, special.id);
+  assert.equal((await data.upcomingPolls(now)).length, 1);
+  await data.setPollCancelled(special.id, true);
+  assert.equal(await data.currentPoll(now), null);
+});
+
+for (const [clock, expected] of [["2026-10-18T12:00:00+09:00", "2026-10-22"], ["2026-12-31T12:00:00+09:00", "2027-01-07"]]) {
+  test(`특별 데모 날짜는 ${clock} 기준 다음 주 목요일 ${expected}`, async () => {
+    const polls = await environment({ clock }).data.upcomingPolls(clock);
+    assert.equal(polls.find((row) => row.fines === false).match_date, expected);
+    assert.equal(polls.length, 2);
+  });
+}
+
+test("기존 생성 API 기본 창과 임의 옵션·복사 격리·날짜 중복을 유지한다", async () => {
+  const { data } = environment();
+  const regular = await data.createPoll("2026-10-24");
+  assert.equal(regular.title, null);
+  assert.equal(regular.fines, true);
+  assert.equal(regular.opens_at, rules.pollWindow("2026-10-24").opens_at);
+  assert.equal(regular.closes_at, rules.pollWindow("2026-10-24").closes_at);
+  const options = { title: "수요일", opens_at: now, closes_at: "2026-10-20T13:00:00+09:00", fines: false };
+  const special = await data.createPoll("2026-10-21", options);
+  for (const [key, value] of Object.entries(options)) assert.equal(special[key], value);
+  special.title = "외부 수정";
+  assert.equal((await data.upcomingPolls(now)).find((row) => row.id === special.id).title, options.title);
+  await data.setPollCancelled(special.id, true);
+  await assert.rejects(() => data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
+});
+
+test("live 다가오는 투표는 KST 경계·취소 제외·날짜순으로 1,000행 다음 페이지까지 조회한다", async () => {
+  const { data, calls } = environment({ live: true, respond: (call) => {
+    const offset = call.operations.find(([name]) => name === "range")[1];
+    return { data: offset ? [{ id: "last" }] : Array.from({ length: 1000 }, (_, id) => ({ id })) };
+  } });
+  assert.equal((await data.upcomingPolls("2026-10-15T15:00:00Z")).length, 1001);
+  for (const [index, call] of calls.entries()) {
+    assert.equal(call.table, "polls");
+    assert.deepEqual(call.operations, [["select", "*"], ["gte", "match_date", "2026-10-16"], ["eq", "cancelled", false], ["order", "match_date"], ["range", index * 1000, index * 1000 + 999]]);
+  }
+});
+
+test("live 생성은 insert 옵션 보존·23505 안내·회장 권한 검사를 한다", async () => {
+  const options = { title: "이벤트", opens_at: now, closes_at: "2026-10-20T13:00:00+09:00", fines: false };
+  const { data, calls } = environment({ live: true, respond: (call) => ({ data: call.operations.find(([name]) => name === "insert")[1] }) });
+  const row = await data.createPoll("2026-10-21", options);
+  for (const [key, value] of Object.entries(options)) assert.equal(row[key], value);
+  assert.equal(calls.length, 1);
+  const duplicate = environment({ live: true, respond: () => ({ error: { code: "23505" } }) });
+  await assert.rejects(() => duplicate.data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
+  const team = environment({ live: true, role: "team" });
+  await assert.rejects(() => team.data.createPoll("2026-10-21"), /회장 로그인/);
+  assert.equal(team.calls.length, 0);
+});
+
+test("모달 기본값은 전날 13시와 토요일에만 벌금을 적용하며 연도 경계도 처리한다", () => {
+  assert.deepEqual(form.defaults("2026-10-17"), { closes_at: "2026-10-16T13:00", fines: true });
+  assert.deepEqual(form.defaults("2026-10-21"), { closes_at: "2026-10-20T13:00", fines: false });
+  assert.deepEqual(form.defaults("2027-01-01"), { closes_at: "2026-12-31T13:00", fines: false });
+});
+
+test("모달 시각은 브라우저 시간대와 무관한 KST이고 제목은 선택 입력이다", () => {
+  const input = { match_date: "2026-10-21", title: " 특별 경기 ", closes_at: "2026-10-20T13:00", fines: false };
+  assert.deepEqual(form.values(input, now), { title: "특별 경기", opens_at: now, closes_at: "2026-10-20T13:00:00+09:00", fines: false });
+  assert.equal(form.values({ ...input, title: "" }, now).title, null);
+  assert.equal(form.formatTime("2026-10-20T04:00:00Z"), "2026/10/20 13:00");
+});
+
+test("지난 경기일·잘못된 날짜·긴 제목·경기 당일 이후 마감을 거절한다", () => {
+  const input = { match_date: "2026-10-21", closes_at: "2026-10-20T13:00" };
+  for (const match_date of ["2026-10-14", "2027-02-30", "", "invalid"]) assert.throws(() => form.values({ ...input, match_date }, now), /날짜/);
+  assert.throws(() => form.values({ ...input, title: "가".repeat(31) }, now), /30자/);
+  for (const closes_at of ["2026-10-21T00:00", "2026-10-22T13:00"]) assert.throws(() => form.values({ ...input, closes_at }, now), /마감은 경기 전이어야 합니다/);
+  for (const closes_at of ["", "2026-10-20T25:00", "2027-02-30T13:00"]) assert.throws(() => form.values({ ...input, closes_at }, now), /마감 시각/);
+  assert.equal(form.values({ match_date: "2026-10-16", closes_at: "2026-10-15T23:59", title: "가".repeat(30) }, "2026-10-15T15:00:00Z").title.length, 30);
+  assert.throws(() => form.values({ ...input, match_date: "2026-10-15" }, "2026-10-15T15:00:00Z"), /날짜/);
+});

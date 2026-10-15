@@ -637,3 +637,14 @@ tbody th { font-weight: 600; }
   .rollout-page .rules-document { grid-column: 2; grid-row: 1 / span 2; }
   .rollout-page .rules-notice { grid-column: 1; }
 }
+
+/* 013: 여러 투표 전환·특별 투표 표시. 공용 블록과 토큰은 유지한다. */
+.poll-switch { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.rollout-page .poll-switch button { width: auto; max-width: 100%; min-height: var(--tap); margin: 0; padding: 8px 12px; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.poll-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.poll-badges:empty { display: none; }
+.poll-badges .chip { margin: 6px 0 0; }
+.board .poll-badges .chip { color: var(--board-ink); border-color: var(--board-seam); background: var(--board-raised); }
+.poll-form .home-actions { margin-top: 16px; }
+.home-page .special-poll-link { margin-top: 16px; padding: 12px 0 0; border-top: var(--hair); font-size: var(--fs-label); }
+.home-page .special-poll-link[hidden] { display: none; }

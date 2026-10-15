@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>주간 참석 투표 · FC EXICAN</title>
+  <title>참석 투표 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="rollout-page">
-  <h1>이번 주 참석 투표</h1>
+  <h1>참석 투표</h1>
   <main class="vote-page page-grid">
-    <section class="board page-board" aria-label="이번 주 투표 요약">
-      <div class="board-row"><div><p class="label">이번 주 투표</p><p id="poll-title" class="board-title">경기 확인 중</p></div><p class="display" id="poll-count" aria-label="참석 인원">—</p></div>
+    <nav id="poll-switch" class="poll-switch page-wide" aria-label="투표 선택" hidden></nav>
+    <section class="board page-board" aria-label="선택한 투표 요약">
+      <div class="board-row"><div><p class="label">참석 투표</p><p id="poll-title" class="board-title">경기 확인 중</p><div id="poll-badges" class="poll-badges"></div></div><p class="display" id="poll-count" aria-label="참석 인원">—</p></div>
       <div class="segments">
         <div class="segment is-dim" id="poll-state-segment"><span class="label">상태</span><b id="poll-status">확인 중</b></div>
         <div class="segment"><span class="label">마감까지</span><b id="poll-deadline">—</b></div>
@@ -35,7 +36,7 @@
     </section>
     <section id="admin-panel" class="card" aria-labelledby="admin-title" hidden>
       <h2 id="admin-title">회장 도구</h2>
-      <div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">다음 투표</span><span class="row-sub">다가오는 토요일 경기</span></span><button class="row-action" type="button" id="create-poll">다음 투표 생성</button></div></div>
+      <div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">새 경기 투표</span><span class="row-sub">정기 경기·공휴일·이벤트</span></span><button class="row-action" type="button" id="create-poll">투표 만들기</button></div></div>
       <button class="btn-destructive" type="button" id="poll-cancel">투표 취소</button>
     </section>
   </main>
@@ -47,6 +48,7 @@
   <script src="js/rules.js"></script>
   <script src="js/member.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/poll-form.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("vote");
@@ -58,6 +60,8 @@
       const create = document.getElementById("create-poll");
       let members = [];
       let poll = null;
+      let polls = [];
+      let version = 0;
       let votes = [];
       let member = null;
       let role = "anon";
@@ -71,6 +75,29 @@
         cancel.disabled = !poll || busy;
         cancel.textContent = poll?.cancelled ? "투표 취소 해제" : "투표 취소";
         create.disabled = busy;
+        const switcher = document.getElementById("poll-switch");
+        switcher.hidden = polls.length < 2;
+        // 주기적인 상태 갱신에서도 포커스가 머무는 칩을 유지한다.
+        if (switcher.children.length !== polls.length || polls.some((row, index) => switcher.children[index]?.dataset.pollId !== row.id)) {
+          switcher.textContent = "";
+          for (const row of polls) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "chip";
+            button.dataset.pollId = row.id;
+            button.addEventListener("click", () => mutate(() => loadPoll(row.id)));
+            switcher.appendChild(button);
+          }
+        }
+        polls.forEach((row, index) => {
+          const button = switcher.children[index];
+          const status = { open: "진행 중", scheduled: "예정", closed: "마감" }[rules.pollStatus(row, now)];
+          button.textContent = `${rules.pollTitle(row)} · ${status}`;
+          button.setAttribute("aria-pressed", String(row.id === poll?.id));
+          button.disabled = busy;
+        });
+        const badges = document.getElementById("poll-badges");
+        badges.textContent = "";
         document.getElementById("poll-panel").hidden = !poll;
         document.getElementById("attendance-panel").hidden = !poll;
         if (!poll) {
@@ -80,20 +107,25 @@
           document.getElementById("poll-state-segment").className = "segment is-dim";
           return;
         }
-        const [, month, day] = poll.match_date.split("-");
-        document.getElementById("poll-title").textContent = `${Number(month)}/${Number(day)}(토) 경기`;
+        document.getElementById("poll-title").textContent = rules.pollTitle(poll);
+        for (const label of [rules.isSpecialPoll(poll) ? "특별" : null, poll.fines === false ? "벌금 없음" : null].filter(Boolean)) {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = label;
+          badges.appendChild(chip);
+        }
         const status = rules.pollStatus(poll, now);
         const badge = document.getElementById("poll-status");
         badge.textContent = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[status];
         badge.dataset.status = status;
-        document.getElementById("poll-state-segment").className = `segment${status === "open" ? " is-lit" : status === "scheduled" || status === "cancelled" ? " is-dim" : ""}`;
+        document.getElementById("poll-state-segment").className = `segment${status === "scheduled" || status === "cancelled" ? " is-dim" : ""}`;
         const deadline = document.getElementById("poll-deadline");
         const remaining = Math.max(0, Math.ceil((new Date(poll.closes_at) - new Date(now)) / 60000));
         const days = Math.floor(remaining / 1440);
         const hours = Math.floor(remaining % 1440 / 60);
         const duration = days ? `${days}일 ${hours}시간` : hours ? `${hours}시간 ${remaining % 60}분` : `${remaining}분`;
         deadline.textContent = status === "cancelled" ? "취소" : status === "closed" ? "마감" : duration;
-        deadline.title = "월요일 13:00 마감";
+        deadline.title = `${ExicanPollForm.formatTime(poll.closes_at)} 마감 (한국 시간)`;
         if (member) ExicanMember.renderBadge(document.getElementById("member-badge"), member, async () => {
           ExicanMember.clear();
           member = await ExicanMember.ensure(members);
@@ -104,8 +136,9 @@
           button.setAttribute("aria-pressed", String(button.dataset.choice === selected));
           button.disabled = busy || !member || (!demo && role === "anon") || status === "scheduled" || status === "cancelled";
         }
-        document.getElementById("vote-notice").textContent = status === "closed" ? "마감 후 투표는 벌금 대상입니다" :
-          status === "scheduled" ? "일요일 13:00부터 투표할 수 있습니다" : status === "cancelled" ? "취소된 투표에는 참여할 수 없습니다" : "마감 전까지 참석 여부를 변경할 수 있습니다";
+        document.getElementById("vote-notice").textContent = status === "closed" ? poll.fines === false ? "마감된 투표입니다. 미투표·지각 투표 벌금은 없습니다" : "마감 후 투표는 벌금 대상입니다" :
+          status === "scheduled" ? `${ExicanPollForm.formatTime(poll.opens_at)}부터 투표할 수 있습니다 (한국 시간)` :
+          status === "cancelled" ? "취소된 투표에는 참여할 수 없습니다" : `마감 ${ExicanPollForm.formatTime(poll.closes_at)} (한국 시간) · 마감 전까지 참석 여부를 변경할 수 있습니다`;
         const summary = rules.attendanceSummary(votes, members);
         document.getElementById("poll-count").textContent = summary.count;
         document.getElementById("poll-formats").textContent = Object.entries(summary.formats).filter(([, info]) => info.ok).map(([format]) => format).join(" · ") || "인원 부족";
@@ -149,9 +182,16 @@
         }
       }
 
-      async function loadPoll() {
-        poll = await ExicanData.currentPoll();
-        votes = poll ? await ExicanData.votes(poll.id) : [];
+      async function loadPoll(preferredId = poll?.id) {
+        const request = ++version;
+        const upcoming = await ExicanData.upcomingPolls();
+        const selected = upcoming.find((row) => row.id === preferredId) ||
+          upcoming.find((row) => rules.pollStatus(row, new Date().toISOString()) === "open") || upcoming[0] || null;
+        const ballot = selected ? await ExicanData.votes(selected.id) : [];
+        if (request !== version) return;
+        polls = upcoming;
+        poll = selected;
+        votes = ballot;
         message.hidden = Boolean(poll);
         message.textContent = poll ? "" : "아직 열린 투표가 없습니다. 일요일 13:00에 자동 생성됩니다.";
         render();
@@ -167,22 +207,26 @@
       }
 
       buttons.forEach((button) => button.addEventListener("click", () => mutate(async () => {
+        const request = version;
         const saved = await ExicanData.castVote(poll.id, member.id, button.dataset.choice);
+        if (request !== version) return;
         votes = votes.filter((vote) => vote.member_id !== saved.member_id).concat(saved);
         showToast(`${saved.choice === "attend" ? "참석" : "불참"}으로 저장했습니다${saved.is_late ? " · 지각 투표" : ""}`);
       })));
       cancel.addEventListener("click", () => {
         const checked = !poll.cancelled;
         mutate(async () => {
-          poll = await ExicanData.setPollCancelled(poll.id, checked);
+          const request = version;
+          await ExicanData.setPollCancelled(poll.id, checked);
+          if (request !== version) return;
+          await loadPoll();
           showToast(checked ? "투표를 취소했습니다" : "투표 취소를 해제했습니다");
         });
       });
-      create.addEventListener("click", () => mutate(async () => {
-        await ExicanData.createPoll(rules.nextSaturday(rules.kstDate(new Date())));
-        await loadPoll();
-        showToast("투표를 생성했습니다");
-      }));
+      create.addEventListener("click", async () => {
+        const created = await ExicanPollForm.open();
+        if (created) await mutate(() => loadPoll(created.id));
+      });
 
       try {
         try { await ExicanAuth.renderAuthBar(); }
@@ -194,7 +238,10 @@
         render();
         if (!demo) await ExicanAuth.onAuthChange(async (event, session) => {
           role = roleFromEmail(session?.user?.email, EXICAN_CONFIG);
+          if (role !== "admin") ExicanPollForm.close();
           if (role === "anon") {
+            version += 1;
+            polls = [];
             poll = null;
             votes = [];
             message.hidden = false;

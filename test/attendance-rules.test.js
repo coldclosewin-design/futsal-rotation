@@ -88,14 +88,15 @@ describe("배정과 날짜", () => {
 // 브라우저 전역 확장 모듈의 권한·저장 계약도 의존성 없이 검사한다.
 function environment({ member = "m03", live = false, failure } = {}) {
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures/demo-data.json"), "utf8"));
-  const context = { URLSearchParams, location: { search: "?demo=1" }, EXICAN_CONFIG: config,
+  const context = { URLSearchParams, location: { search: live ? "" : "?demo=1" }, EXICAN_CONFIG: config,
+    isConfigured: () => true, document: { querySelector: () => ({}) }, showToast: () => {},
     ExicanRules: require("../js/rules.js"), ExicanAttendance: rules, ExicanLedgerRules: require("../js/ledger-rules.js"),
     ExicanMember: { getId: () => member }, fetch: async () => ({ ok: true, json: async () => structuredClone(fixture) }),
     ExicanAuth: { getRole: async () => member === "m03" ? "admin" : "team", init: async () => ({ from: () => ({ update: () => ({ eq: () => ({ select: () => ({ single: async () => ({ error: failure, status: 403 }) }) }) }) }) }) },
     ExicanData: { mode: () => live ? "live" : "demo", members: async () => structuredClone(fixture.members), matches: async () => structuredClone(fixture.matches), ledger: async () => structuredClone(fixture.ledger) } };
   context.window = context;
   vm.createContext(context);
-  for (const name of ["data-ledger.js", "data-admin.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", name), "utf8"), context);
+  for (const name of [...(live ? [] : ["data.js"]), "data-ledger.js", "data-admin.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", name), "utf8"), context);
   return context.ExicanData;
 }
 
@@ -117,10 +118,19 @@ describe("data-admin 저장 계약", () => {
     const data = environment();
     const polls = await data.polls();
     assert.ok(polls.find((row) => row.id === "demo-poll-past").match_date < polls.find((row) => row.id === "demo-poll-1").match_date);
-    assert.equal((await data.currentPoll()).id, "demo-poll-1");
+    assert.equal((await data.currentPoll()).id, (await data.upcomingPolls())[0].id);
     await data.cancelPoll("demo-poll-1", true);
-    assert.equal((await data.currentPoll()).cancelled, true);
+    assert.equal((await data.currentPoll()).id, "demo-poll-special");
+    assert.equal((await data.polls()).find((row) => row.id === "demo-poll-1").cancelled, true);
     assert.equal((await data.votes("demo-poll-past")).length, 8);
+  });
+  test("관리 모달의 제목·시간·벌금 옵션과 중복 날짜 문구를 보존한다", async () => {
+    const data = environment();
+    const options = { title: "수요일 경기", opens_at: "2099-10-01T09:00:00+09:00", closes_at: "2099-10-27T13:00:00+09:00", fines: false };
+    const added = await data.createPoll("2099-10-28", options);
+    for (const [key, value] of Object.entries(options)) assert.equal(added[key], value);
+    assert.equal((await data.upcomingPolls()).find((row) => row.id === added.id).title, options.title);
+    await assert.rejects(() => data.createPoll("2099-10-28"), /해당 날짜의 투표가 이미 있습니다/);
   });
   test("출석 upsert는 누락 멤버를 삭제하지 않음", async () => {
     const data = environment();

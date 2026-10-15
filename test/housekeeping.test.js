@@ -83,6 +83,14 @@ test("마감 시각 당일 경계까지는 벌금을 요청하지 않는다", as
   assert.equal(context.calls.filter((call) => call.rows?.[0]?.category === "fine_late_vote").length, 0);
 });
 
+test("마감이 지난 fines=false 투표는 장부 POST가 없다", async () => {
+  const poll = { ...fixture.polls[0], title: "특별 경기", fines: false };
+  const context = harness({ now: "2026-10-15T12:00:00+09:00", polls: [poll] });
+  assert.equal(await main([], context.deps), 0);
+  assert.ok(context.calls.some((call) => call.table === "poll_votes"));
+  assert.equal(context.calls.filter((call) => call.table === "ledger" && call.method === "POST").length, 0);
+});
+
 test("취소·14일 초과 투표는 제외하고 14일 경계는 포함한다", async () => {
   const polls = [
     { ...fixture.polls[0], id: "old", closes_at: "2026-10-01T11:59:59+09:00" },

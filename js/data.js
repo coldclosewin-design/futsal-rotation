@@ -25,14 +25,28 @@ window.ExicanData = (() => {
         const response = await fetch("test/fixtures/demo-data.json");
         if (!response.ok) throw new Error(`데모 데이터를 불러오지 못했습니다 (${response.status})`);
         const data = await response.json();
-        const matchDate = rules.nextSaturday(rules.kstDate(new Date()));
+        const today = rules.kstDate(new Date());
+        const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+        const dateAfter = (days) => new Date(Date.parse(`${today}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
         for (const poll of data.polls) {
-          poll.match_date = matchDate;
-          Object.assign(poll, rules.pollWindow(matchDate));
+          const match = data.matches?.find((row) => row.poll_id === poll.id);
+          if (match && match.status !== "scheduled") {
+            poll.match_date = dateAfter(-((weekday - 6 + 7) % 7 || 7));
+            Object.assign(poll, rules.pollWindow(poll.match_date));
+          } else if (rules.isSpecialPoll(poll)) {
+            // 월요일 시작 달력의 다음 주 목요일. 정기 투표와 별개로 진행 중인 샘플이다.
+            poll.match_date = dateAfter(10 - (weekday + 6) % 7);
+            poll.opens_at = `${today}T00:00:00+09:00`;
+            poll.closes_at = `${dateAfter(9 - (weekday + 6) % 7)}T13:00:00+09:00`;
+          } else {
+            poll.match_date = rules.nextSaturday(today);
+            Object.assign(poll, rules.pollWindow(poll.match_date));
+          }
         }
         for (const vote of data.poll_votes) {
           const poll = data.polls.find((item) => item.id === vote.poll_id);
-          vote.updated_at = new Date(new Date(poll.closes_at).getTime() + (vote.is_late ? 3600000 : -3600000)).toISOString();
+          const time = Date.parse(poll.closes_at) + (vote.is_late ? 3600000 : -3600000);
+          vote.updated_at = new Date(vote.is_late ? time : Math.min(Date.now(), time)).toISOString();
         }
         for (const table of ["match_candidates", "candidate_reactions", "matches", "ledger"]) data[table] = data[table] || [];
         return data;
@@ -58,11 +72,21 @@ window.ExicanData = (() => {
     });
   }
 
-  async function currentPoll(nowIso = new Date().toISOString()) {
+  async function upcomingPolls(nowIso = new Date().toISOString()) {
     const today = rules.kstDate(nowIso);
-    if (mode() === "demo") return copy((await demoData()).polls.filter((poll) => poll.match_date >= today)
-      .sort((a, b) => a.match_date.localeCompare(b.match_date))[0] || null);
-    return live((client) => client.from("polls").select("*").gte("match_date", today).order("match_date").limit(1).maybeSingle());
+    if (mode() === "demo") return copy((await demoData()).polls.filter((poll) => poll.match_date >= today && !poll.cancelled)
+      .sort((a, b) => a.match_date.localeCompare(b.match_date)));
+    const rows = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await live((client) => client.from("polls").select("*").gte("match_date", today)
+        .eq("cancelled", false).order("match_date").range(offset, offset + 999));
+      rows.push(...page);
+      if (page.length < 1000) return rows;
+    }
+  }
+
+  async function currentPoll(nowIso = new Date().toISOString()) {
+    return (await upcomingPolls(nowIso))[0] || null;
   }
 
   async function votes(pollId) {
@@ -93,9 +117,11 @@ window.ExicanData = (() => {
     if (mode() === "live" && await ExicanAuth.getRole() !== "admin") throw new Error("회장 로그인이 필요합니다");
   }
 
-  async function createPoll(matchDate) {
+  async function createPoll(matchDate, { title = null, opens_at, closes_at, fines = true } = {}) {
     await requireAdmin();
-    const row = { match_date: matchDate, ...rules.pollWindow(matchDate), cancelled: false };
+    const defaults = rules.pollWindow(matchDate);
+    const row = { match_date: matchDate, title, fines, opens_at: opens_at === undefined ? defaults.opens_at : opens_at,
+      closes_at: closes_at === undefined ? defaults.closes_at : closes_at, cancelled: false };
     if (mode() === "demo") {
       const data = await demoData();
       if (data.polls.some((poll) => poll.match_date === matchDate)) throw new Error("해당 날짜의 투표가 이미 있습니다");
@@ -204,7 +230,7 @@ window.ExicanData = (() => {
     });
   }
 
-  const api = { members, currentPoll, votes, castVote, createPoll, setPollCancelled, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
+  const api = { members, upcomingPolls, currentPoll, votes, castVote, createPoll, setPollCancelled, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
   return { mode, ...Object.fromEntries(Object.entries(api).map(([name, method]) => [name, async (...args) => {
     try { return await method(...args); }
     catch (error) { showToast(error.message || "데이터 요청에 실패했습니다"); throw error; }

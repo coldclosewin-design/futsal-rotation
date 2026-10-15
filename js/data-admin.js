@@ -18,18 +18,22 @@
       const response = await fetch("test/fixtures/demo-data.json");
       if (!response.ok) throw new Error("관리 데모 데이터를 불러오지 못했습니다");
       const data = await response.json();
+      const futurePolls = await original.upcomingPolls();
       const future = window.ExicanRules.nextSaturday(today());
       for (const match of data.matches) {
         match.match_date = match.status === "scheduled" ? future : past([match])[0].match_date;
       }
       for (const poll of data.polls) {
+        const upcoming = futurePolls.find((row) => row.id === poll.id);
+        if (upcoming) { Object.assign(poll, upcoming); continue; }
         const match = data.matches.find((row) => row.poll_id === poll.id);
         poll.match_date = match?.match_date || future;
         Object.assign(poll, window.ExicanRules.pollWindow(poll.match_date));
       }
       for (const vote of data.poll_votes) {
         const poll = data.polls.find((row) => row.id === vote.poll_id);
-        vote.updated_at = new Date(Date.parse(poll.closes_at) + (vote.is_late ? 1 : -1) * 3600000).toISOString();
+        const time = Date.parse(poll.closes_at) + (vote.is_late ? 1 : -1) * 3600000;
+        vote.updated_at = new Date(vote.is_late ? time : Math.min(Date.now(), time)).toISOString();
       }
       data.match_attendance = data.match_attendance || [];
       data.rotation_history = data.rotation_history || [];
@@ -102,17 +106,24 @@
     return copy(rows.filter((row) => (!from || row.match_date >= from) && (!to || row.match_date <= to)).sort((a, b) => b.match_date.localeCompare(a.match_date)));
   }
 
-  async function currentPoll(now = new Date().toISOString()) {
-    if (api.mode() !== "demo") return original.currentPoll(now);
-    return (await polls({ from: window.ExicanRules.kstDate(now) })).reverse()[0] || null;
+  async function upcomingPolls(now = new Date().toISOString()) {
+    if (api.mode() !== "demo") return original.upcomingPolls(now);
+    return (await polls({ from: window.ExicanRules.kstDate(now) })).filter((poll) => !poll.cancelled).reverse();
   }
 
-  async function createPoll(matchDate) {
+  async function currentPoll(now = new Date().toISOString()) {
+    return (await upcomingPolls(now))[0] || null;
+  }
+
+  async function createPoll(matchDate, { title = null, opens_at, closes_at, fines = true } = {}) {
     await requireAdmin();
-    if (api.mode() !== "demo") return original.createPoll(matchDate);
+    if (api.mode() !== "demo") return original.createPoll(matchDate, { title, opens_at, closes_at, fines });
     const data = await demoData();
-    if (data.polls.some((row) => row.match_date === matchDate)) throw Object.assign(new Error("해당 날짜의 투표가 이미 있습니다"), { code: "23505" });
-    const row = { id: `demo-poll-${matchDate}`, match_date: matchDate, ...window.ExicanRules.pollWindow(matchDate), cancelled: false };
+    if (data.polls.some((row) => row.match_date === matchDate)) throw new Error("해당 날짜의 투표가 이미 있습니다");
+    const defaults = window.ExicanRules.pollWindow(matchDate);
+    const row = { id: `demo-poll-${matchDate}`, match_date: matchDate, title, fines,
+      opens_at: opens_at === undefined ? defaults.opens_at : opens_at,
+      closes_at: closes_at === undefined ? defaults.closes_at : closes_at, cancelled: false };
     data.polls.push(row);
     return copy(row);
   }
@@ -230,7 +241,7 @@
     return original.addLedger(row);
   }
 
-  const methods = { members, upsertMember, polls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, votesByPolls,
+  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, votesByPolls,
     votes: (id) => votesByPolls([id]), matches, updateMatch, attendance,
     saveAttendance: (id, rows) => saveRows("match_attendance", id, rows), rotationHistory,
     saveRotationHistory: (id, rows) => saveRows("rotation_history", id, rows), matchHistory };

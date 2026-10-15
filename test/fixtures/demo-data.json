@@ -15,9 +15,13 @@
   ],
   "polls": [
     { "id": "demo-poll-1", "match_date": "2026-10-17", "opens_at": "2026-10-11T13:00:00+09:00", "closes_at": "2026-10-12T13:00:00+09:00", "cancelled": false },
-    { "id": "demo-poll-past", "match_date": "2026-10-10", "opens_at": "2026-10-04T13:00:00+09:00", "closes_at": "2026-10-05T13:00:00+09:00", "cancelled": false }
+    { "id": "demo-poll-past", "match_date": "2026-10-10", "opens_at": "2026-10-04T13:00:00+09:00", "closes_at": "2026-10-05T13:00:00+09:00", "cancelled": false },
+    { "id": "demo-poll-special", "match_date": "2026-10-22", "title": "개천절 특별 매치", "opens_at": "2026-10-15T00:00:00+09:00", "closes_at": "2026-10-21T13:00:00+09:00", "fines": false, "cancelled": false }
   ],
   "poll_votes": [
+    { "poll_id": "demo-poll-special", "member_id": "m01", "choice": "attend", "is_late": false, "updated_at": "2026-10-15T12:00:00+09:00" },
+    { "poll_id": "demo-poll-special", "member_id": "m02", "choice": "absent", "is_late": false, "updated_at": "2026-10-15T12:00:00+09:00" },
+    { "poll_id": "demo-poll-special", "member_id": "m03", "choice": "attend", "is_late": false, "updated_at": "2026-10-15T12:00:00+09:00" },
     { "poll_id": "demo-poll-past", "member_id": "m01", "choice": "attend", "is_late": false },
     { "poll_id": "demo-poll-past", "member_id": "m02", "choice": "attend", "is_late": false },
     { "poll_id": "demo-poll-past", "member_id": "m03", "choice": "attend", "is_late": false },
