@@ -1,102 +1,68 @@
-# [014] 도움말 페이지(팀원·회장)와 첫 진입 안내 링크
+# [014] 도움말 페이지(docs/guide.md 렌더링)와 첫 진입 안내 링크
 
 - 브랜치: `codex/014-help-page`
 - 의존: 013 (main에 머지됨)
-- 예상 규모: S
+- 예상 규모: M
 
 ## 배경
-서비스를 팀원 11명과 회장에게 공유합니다. 사용법은 `README.md`에만 있어 팀원이 볼 수 없습니다.
-회칙 페이지(`rules.html`)처럼 **PIN 없이 열리는 정적 도움말 페이지**를 만들어, 팀원은 "처음 쓸 때"와 "매주 할 일"을,
-회장은 "주간 운영 순서"와 "문제 생겼을 때"를 한 페이지에서 보게 합니다. 카톡 인앱 브라우저(375px)에서 읽는 것이 기본 상황입니다.
+서비스를 팀원 11명과 회장에게 공유합니다. 상세 가이드는 `docs/guide.md`에 Claude가 작성해 두었습니다(팀원 편·회장 편).
+회칙 페이지(`rules.html`)가 `docs/rules.md`를 `js/markdown-lite.js`로 렌더링하듯, **PIN 없이 열리는 `help.html`이 `docs/guide.md`를 렌더링**합니다.
+가이드는 `###`·굵게·링크·번호 목록을 쓰므로 markdown-lite를 그만큼만 확장합니다. 카톡 인앱 브라우저(375px)에서 읽는 것이 기본 상황입니다.
 
 ## 목표
-- 더보기(모바일)/레일(데스크톱)에 "도움말" 항목이 생기고, `help.html`이 로그인 없이 열린다.
-- PIN 입력 모달 아래에 "처음이세요? 도움말" 링크가 있어 로그인 전에도 도움말에 갈 수 있다.
-- 본문은 아래 "본문 내용"을 그대로 쓴다(문구 임의 변경 금지, 오타만 수정 가능).
+- 더보기(모바일)/레일(데스크톱)에 "도움말" 항목이 생기고, `help.html`이 로그인 없이 `docs/guide.md`를 보여 준다.
+- 페이지 상단에 "팀원 편 / 회장 편" 바로가기 두 개가 있어 긴 문서를 건너뛸 수 있다.
+- 팀 PIN 모달 아래 "처음이세요? 도움말" 링크로 로그인 전에도 도움말에 갈 수 있다.
 
 ## 변경 파일
-- (신규) `help.html` — 도움말 페이지. `rules.html`의 뼈대(head, `body.rollout-page`, `h1`, `main.page-grid`, 스크립트 순서)를 그대로 복사하되 Supabase/데이터 스크립트는 넣지 않는다(`config.js`, `ui.js`만).
-- `js/ui.js` — `NAV_ITEMS`에 `{ key: "help", label: "도움말", href: "help.html" }`를 `rules` 다음·`admin` 앞에 추가. `ICONS.help` 추가(24 그리드 1.75px: 원 + 물음표, 예 `<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1.9-1.1 1.8M12 17v.5"/>`). `renderNav` 로직은 수정 금지.
-- `js/supabase.js` — PIN 모달(`account === "team"`일 때만) 폼 맨 아래에 `<a class="modal-help" href="help.html">처음이세요? 도움말</a>` 추가. 회장 로그인 모달에는 넣지 않는다.
-- `styles.css` — "페이지별 보정" 섹션 끝에 `.help-page` 보정과 `.modal-help`(라벨 크기, `--ink-3`, 가운데 정렬, 위 여백 12px)만 추가. 토큰·공용 블록 수정 금지.
+- (신규) `help.html` — `rules.html`의 뼈대(head, `body.rollout-page`, `h1`, `main.page-grid`, 스크립트 순서)를 복사. Supabase/데이터 스크립트는 넣지 않는다(`config.js`, `ui.js`, `markdown-lite.js`만). `fetch("docs/guide.md")` → `renderMarkdownLite` → `article.rules-document`에 삽입. 실패 시 `rules.html`과 같은 문구 패턴으로 `docs/guide.md` 원문 링크.
+- `js/markdown-lite.js` — 확장: `###` → `<h3>`, `**굵게**` → `<strong>`, `[텍스트](url)` → `<a href>`(`http(s)://`로 시작하거나 `.html`/`.md`/`#`으로 시작·끝나는 상대경로만 허용, 그 외는 텍스트 그대로), `1.`로 시작하는 연속 줄 → `<ol><li>`(중첩 없음). 기존 `rules.md` 렌더 결과는 바뀌지 않아야 한다. 인라인 치환은 escape 이후에 적용(XSS 금지).
+- `test/markdown-lite.test.js` — 위 4가지 케이스 + `rules.md` 렌더 결과 불변 테스트(기존 테스트 파일이 있으면 거기에 추가).
+- `js/ui.js` — `NAV_ITEMS`에 `{ key: "help", label: "도움말", href: "help.html" }`를 `rules` 다음·`admin` 앞에 추가. `ICONS.help` 추가(24 그리드 1.75px: `<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1.9-1.1 1.8M12 17v.5"/>`). `renderNav` 로직 수정 금지.
+- `js/supabase.js` — PIN 모달(`account === "team"`일 때만) 폼 맨 아래 `<a class="modal-help" href="help.html">처음이세요? 도움말</a>`. 회장 로그인 모달에는 넣지 않는다.
+- `styles.css` — "페이지별 보정" 섹션 끝에만 추가: `.help-page .rules-document h3`(본문 크기 15/700, 위 여백 20px), `.help-page .rules-document ol`(padding-left 20px, 항목 간 6px), `.modal-help`(라벨 크기, `--ink-3`, 가운데 정렬, 위 여백 12px). 토큰·공용 블록 수정 금지.
 - `README.md` — "화면 구성" 목록에 **도움말** 한 줄, 팀원용 사용법 끝에 "막히면 더보기 → 도움말" 한 줄.
 
 ## 변경 금지
-- `index.html`, `vote.html`, `matches.html`, `ledger.html`, `rotation.html`, `member.html`, `admin.html`, `rules.html`, `js/data*.js`, `js/rules.js`, `scripts/*`, `supabase/*`, `test/*`, `DESIGN.md`
+- `docs/guide.md`(내용은 Claude가 관리; 렌더링 문제로 꼭 필요한 공백·기호 수정만 허용하고 PR에 명시), `docs/rules.md`, `index.html`, `vote.html`, `matches.html`, `ledger.html`, `rotation.html`, `member.html`, `admin.html`, `rules.html`, `js/data*.js`, `js/rules.js`, `scripts/*`, `supabase/*`, `DESIGN.md`
 
 ## 상세 요구사항
 
 ### 1. 페이지 구조 (`help.html`)
-- `<title>도움말 · FC EXICAN</title>`, `<h1>도움말</h1>`, `renderNav("help")`.
-- 보드 없음(공개 정적 페이지, `rules.html`과 같은 급). 구성 순서:
-  1. `section.card` "처음 한 번만" — 번호 목록 3개
-  2. `section.card` "매주 할 일(팀원)" — 번호 목록
-  3. `nav.rows` "화면 안내" — 행 목록. 각 행은 `a.row`로 해당 페이지 링크(`href`는 `vote.html` 등 상대 경로). 왼쪽 `.row-label` 화면 이름, `.row-sub` 한 줄 설명, 오른쪽 `.row-action` "열기".
-  4. `section.card` "회장: 매주 운영 순서" — 번호 목록 6개
-  5. `section.card` "회장: 문제가 생겼을 때" — `<details>`가 아니라 소제목(`h3`) + 문단. 항목 4개
-  6. `aside.rules-notice.page-wide` — 마지막 안내 한 줄
-- 섹션 사이 간격·카드·행 목록은 공용 스타일만 사용. 인라인 `style=`, 이모지, 새 색 금지. 번호 목록은 `<ol>` 그대로(공용 `ol` 스타일이 없으면 `.help-page ol { padding-left: 20px; display: grid; gap: 8px; }` 한 줄만 보정 섹션에 추가).
-- `?demo=1`로 들어온 경우에도 내비가 데모를 유지하는 것은 `ui.js`가 처리하므로 추가 코드 없음.
+- `<title>도움말 · FC EXICAN</title>`, `<h1>도움말</h1>`, `renderNav("help")`, `main.help-page.page-grid`.
+- 보드 없음(공개 정적 페이지). 구성 순서:
+  1. `nav.rows.page-wide` "바로가기": `a.row` 두 개 — **팀원 편**(`href="#팀원-편"`, `.row-sub` "처음 설정, 투표, 추천, 간식 청구, 내 현황"), **회장 편**(`href="#회장-편"`, `.row-sub` "주간 운영, 매칭, 배정표, 출석·벌금, 정산"). 오른쪽 `.row-action` "이동".
+  2. `article#help-content.rules-document.page-wide` — 렌더링된 가이드. `aria-busy` 처리는 `rules.html`과 동일.
+  3. `aside.rules-notice.page-wide` "도움말에 없는 문제는 회장에게 개인톡으로".
+- 렌더 후 `h2`에 `id`를 붙인다: 제목 텍스트의 공백을 `-`로 바꾼 값(예: "팀원 편" → `팀원-편`). markdown-lite가 아니라 `help.html` 스크립트에서 처리(공용 모듈 동작 변경 최소화).
+- 가이드의 첫 `h1`("FC EXICAN 운영 허브 사용 가이드")은 페이지 `h1`과 중복되므로 렌더 결과에서 첫 `h1`을 제거한다.
+- 인라인 `style=`, 이모지, 새 색 금지. 375px 가로 넘침 없음(긴 URL은 `overflow-wrap: anywhere`가 `.rules-document`에 이미 있는지 확인, 없으면 보정 섹션에 추가).
 
-### 2. 본문 내용 (그대로 사용)
-
-**처음 한 번만**
-1. 회장에게 받은 팀 PIN을 입력합니다. 한 번 입력하면 이 기기에서는 다시 묻지 않습니다.
-2. 투표 화면에서 내 이름을 선택합니다. 이름은 이 기기에 저장되며, 잘못 골랐으면 "변경"을 누릅니다.
-3. 카카오톡 안에서 열어도 되지만, 홈 화면에 추가해 두면 더 편합니다(브라우저 메뉴 → 홈 화면에 추가).
-
-**매주 할 일(팀원)**
-1. 일요일 오후 투표가 열리면 "투표"에서 참석 또는 불참을 누릅니다. 마감은 월요일 13:00이고, 마감 전에는 바꿀 수 있습니다.
-2. 마감까지 투표하지 않으면 회칙에 따라 벌금 5,000원이 장부에 자동으로 기록됩니다.
-3. "매칭"에서 이번 주 후보를 보고 마음에 드는 곳에 추천(엄지)을 누릅니다. 확정된 매치는 홈 보드에 표시됩니다.
-4. 경기 당일 배정표는 "배정표"에서 확인하거나 회장이 카톡으로 보내 줍니다.
-5. 간식을 대신 샀다면 "장부 → 간식 청구"에 금액과 내용을 올립니다. 회장이 승인하면 장부에 반영됩니다.
-6. 내 회비·벌금·납부 현황은 "더보기 → 내 현황"에서 봅니다. 미납이 있으면 숫자 옆에 점이 켜집니다.
-
-**화면 안내** (행 목록)
-- 홈 — 이번 주 D-day, 투표·매치 상태, 확정 매치 한눈에 → `index.html`
-- 투표 — 이번 주 참석/불참, 특별 매치 투표 전환 → `vote.html`
-- 매칭 — 모두의풋살 카페에서 모은 토요일 오전 후보와 추천 → `matches.html`
-- 배정표 — 참석자로 키퍼·휴식 자동 배정, 카톡 복사 → `rotation.html`
-- 장부 — 팀 잔액, 이번 달 회비·벌금, 간식 청구 → `ledger.html`
-- 내 현황 — 내 납부·벌금·참석률·키퍼 기록 → `member.html`
-- 회칙 — 회비·벌금 기준과 경기 기록 → `rules.html`
-
-**회장: 매주 운영 순서**
-1. 일요일 13:00 이후 투표가 자동으로 열립니다. 홈의 "링크 복사"로 투표 링크를 카톡에 올립니다.
-2. 월요일 13:00에 투표가 마감되고 미투표 벌금이 자동 기록됩니다. 홈 보드의 참석 인원으로 5v5/6v6 가능 여부를 확인합니다.
-3. "매칭"에서 후보를 고르고, 카페 글의 연락처로 문자를 보냅니다. 상태 버튼(연락함 → 답장 → 확정)을 누르면 바로 저장되고, "미연락"으로 되돌릴 수 있습니다.
-4. 상대와 합의되면 "확정"에서 날짜·시간·구장·구장비를 입력합니다. 구장비는 장부에 자동 반영됩니다.
-5. 경기 당일 "배정표"에서 "이번 주 참석자 불러오기" → 배정표 생성 → 카톡에 복사. "회장 저장"을 누르면 개인 기록에 남습니다.
-6. 경기 후 "관리"에서 출석·지각·불참을 입력하고, 간식 청구를 승인하고, 입금된 회비·벌금을 장부에서 정산 처리합니다.
-
-**회장: 문제가 생겼을 때**
-- 공휴일·이벤트 경기: "투표" 또는 "관리 → 투표"의 "투표 만들기"에서 날짜·제목·마감·벌금 적용 여부를 정해 만듭니다. 팀원은 투표 화면 상단에서 투표를 전환해 응답합니다.
-- 투표를 취소해야 할 때: "투표" 회장 도구의 "투표 취소". 취소된 투표는 벌금 대상이 아닙니다.
-- 벌금·회비를 고쳐야 할 때: "장부"에서 해당 행을 펼쳐 수정하거나 "관리"에서 조정 항목을 추가합니다. 자동 기록은 지우지 말고 조정 행으로 상쇄합니다.
-- PIN이나 회장 비밀번호를 잊었을 때: Supabase 대시보드 → Authentication → Users에서 해당 계정의 비밀번호를 재설정합니다(`README.md` 운영 절차 참고). 팀원에게는 새 PIN을 개인톡으로 전달합니다.
-
-**마지막 안내 한 줄**
-도움말에 없는 문제는 회장에게 알려 주세요. 회장은 README의 운영 절차를 참고합니다.
+### 2. markdown-lite 확장 규칙
+- 제목: `#`, `##`(기존), `###`(추가). 네 개 이상은 문단.
+- 굵게: `**…**` 한 줄 안에서만. 짝이 안 맞으면 그대로 둔다.
+- 링크: `[텍스트](url)`. url이 `https://`/`http://`로 시작하면 `target="_blank" rel="noopener"`, 상대경로(`.html`/`.md`로 끝나거나 `#`으로 시작)면 그대로. 그 외는 치환하지 않는다.
+- 번호 목록: `^\d+\.\s+`로 시작하는 줄이 연속되면 하나의 `<ol>`. 번호 값은 무시하고 순서대로. 빈 줄이나 다른 블록이 오면 닫는다.
+- 기존 `-` 목록, 문단, `rotation.html` 자동 링크는 그대로.
 
 ### 3. PIN 모달 링크 (`js/supabase.js`)
-- 팀 PIN 모달 폼의 버튼 줄 아래에 `처음이세요? 도움말` 링크. 클릭 시 `help.html`로 이동(모달은 닫지 않아도 됨, 페이지가 바뀜). 데모 모드(`?demo=1`)에서는 모달이 뜨지 않으므로 해당 없음.
-- 링크는 `.modal-help` 클래스, 라벨 크기, `--ink-3`, 가운데 정렬.
+- 팀 PIN 모달 폼의 버튼 줄 아래 `처음이세요? 도움말`. 클릭 시 `help.html`로 이동. `?demo=1`에서는 모달이 뜨지 않으므로 해당 없음.
 
 ## 수용 기준
-- [ ] `npm test` 통과
-- [ ] `help.html`이 PIN 모달 없이 열리고, 내용이 위 "본문 내용"과 일치한다(문구 변경 없음)
-- [ ] 375px에서 가로 넘침 없음, 1280px에서 레일 레이아웃 정상, 콘솔 에러 없음
+- [ ] `npm test` 통과(markdown-lite 테스트 추가 포함), `rules.html` 렌더 결과 변화 없음
+- [ ] `help.html`이 PIN 모달 없이 열리고 `docs/guide.md` 전체가 h2/h3/굵게/링크/번호 목록까지 올바르게 렌더된다
+- [ ] 상단 바로가기 두 개가 각각 "팀원 편", "회장 편" 제목으로 스크롤된다
+- [ ] 375px 가로 넘침 없음, 1280px 레일 레이아웃 정상, 콘솔 에러 없음
 - [ ] 모바일 더보기 시트와 데스크톱 레일에 "도움말"이 회칙 다음·관리 앞에 보인다
-- [ ] 라이브 첫 진입 PIN 모달 아래에 "처음이세요? 도움말" 링크가 보이고 `help.html`로 이동한다 (회장 로그인 모달에는 없음)
+- [ ] 라이브 첫 진입 PIN 모달 아래 "처음이세요? 도움말" 링크가 `help.html`로 이동한다(회장 로그인 모달에는 없음)
 - [ ] `help.html`에 `style=`·hex 색·이모지 없음, 새 토큰 없음
 - [ ] `README.md` 두 줄 반영
-- [ ] PR 본문에 375px 스크린샷 2장(상단·회장 섹션)
+- [ ] PR 본문에 375px 스크린샷 3장(바로가기, 팀원 편 일부, 회장 편 일부)
 
 ## 테스트 방법
 - 자동: `npm test`
-- 수동: `python -m http.server 8765` → `/help.html`, `/help.html?demo=1`, `/index.html`(PIN 모달 링크)
+- 수동: `python -m http.server 8765` → `/help.html`, `/help.html?demo=1`, `/rules.html`(회귀), `/index.html`(PIN 모달 링크)
 
 ## 참고
-- `rules.html` 뼈대, `styles.css`의 `.rows`/`.row`/`.card`/`.rules-notice`, `js/ui.js`의 `NAV_ITEMS`/`ICONS`
-- 공지문 원문 `docs/kakao-announcement.md`(이 발주 범위 아님, 문구 참고용)
+- `rules.html`의 fetch·렌더·오류 처리, `js/markdown-lite.js`, `styles.css`의 `.rows`/`.row`/`.rules-document`/`.rules-notice`, `js/ui.js`의 `NAV_ITEMS`/`ICONS`
+- 공지문 `docs/kakao-announcement.md`(발주 범위 아님)
