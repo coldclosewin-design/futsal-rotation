@@ -42,9 +42,13 @@ create table if not exists public.polls (
   closes_at timestamptz not null,
   cancelled boolean not null default false,
   match_id uuid,
+  title text,
+  fines boolean not null default true,
   created_at timestamptz not null default now()
 );
 alter table public.polls enable row level security;
+alter table public.polls add column if not exists title text;
+alter table public.polls add column if not exists fines boolean not null default true;
 
 create table if not exists public.poll_votes (
   poll_id uuid references public.polls(id) on delete cascade,
