@@ -9,6 +9,7 @@ const ICONS = {
   ledger: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
   member: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
   rules: '<path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5M8 13h8M8 17h6"/>',
+  help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1.9-1.1 1.8M12 17v.5"/>',
   admin: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
   more: '<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { key: "ledger", label: "장부", href: "ledger.html" },
   { key: "member", label: "내 현황", href: "member.html" },
   { key: "rules", label: "회칙", href: "rules.html" },
+  { key: "help", label: "도움말", href: "help.html" },
   { key: "admin", label: "관리", href: "admin.html" }
 ];
 const TABBAR_KEYS = ["home", "vote", "matches", "rotation", "ledger"];
