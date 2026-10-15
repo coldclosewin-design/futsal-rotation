@@ -10,20 +10,26 @@
 <body class="home-page">
   <h1>FC EXICAN 운영 허브</h1>
   <main>
-    <section class="board home-board" aria-label="이번 주 상태">
-      <div class="board-row">
-        <div>
-          <p class="label">이번 주</p>
-          <p id="home-week-date" class="board-title">확인 중</p>
+    <div class="bed">
+      <section class="board home-board" aria-label="이번 주 상태">
+        <div class="board-row">
+          <div>
+            <p class="label">이번 주</p>
+            <p id="home-week-date" class="board-title">확인 중</p>
+          </div>
+          <p id="home-dday" class="display" aria-label="경기까지 남은 날">—</p>
         </div>
-        <p id="home-dday" class="display" aria-label="경기까지 남은 날">—</p>
-      </div>
-      <div class="segments" aria-hidden="true">
-        <div class="segment is-dim" id="seg-poll"><span class="label">투표</span><b>확인 중</b></div>
-        <div class="segment is-dim" id="seg-match"><span class="label">매치</span><b>확인 중</b></div>
-      </div>
-      <p id="home-week" class="ledger-sr-only" role="status">이번 주 일정을 확인하는 중입니다…</p>
-    </section>
+        <div class="segments" aria-hidden="true">
+          <div class="segment is-dim" id="seg-poll"><span class="label">투표</span><b>확인 중</b></div>
+          <div class="segment is-dim" id="seg-match"><span class="label">매치</span><b>확인 중</b></div>
+        </div>
+        <div class="board-lines">
+          <p id="home-match" class="board-line" aria-live="polite">확정 매치를 불러오는 중입니다…</p>
+          <p id="home-created-match" class="board-line" hidden></p>
+        </div>
+        <p id="home-week" class="ledger-sr-only" role="status">이번 주 일정을 확인하는 중입니다…</p>
+      </section>
+    </div>
     <div class="hub-grid">
       <section class="card" aria-labelledby="home-poll-title">
         <h2 id="home-poll-title">이번 주 투표</h2>
@@ -42,29 +48,20 @@
           <button id="share-candidates" class="home-share" type="button" disabled>후보 공유</button>
         </div>
       </section>
-      <section class="card" aria-labelledby="home-match-title">
-        <h2 id="home-match-title">확정 매치</h2>
-        <p id="home-match" aria-live="polite">확정 매치를 불러오는 중입니다…</p>
-        <p id="home-created-match" class="home-meta" hidden></p>
-        <a href="matches.html">확정 매치 보기</a>
-      </section>
-      <section class="card" aria-labelledby="home-rotation-title">
-        <h2 id="home-rotation-title">배정표</h2>
-        <p>이번 주 참석자를 불러와 키퍼와 휴식을 배정합니다.</p>
-        <a id="home-rotation-link" class="home-primary-link" href="rotation.html">배정표 만들기</a>
-      </section>
-      <section class="card" aria-labelledby="home-ledger-title">
-        <h2 id="home-ledger-title">장부</h2>
-        <p class="home-number" id="home-balance">—</p>
-        <p id="ledger-summary" class="home-meta" aria-live="polite">장부를 불러오는 중입니다…</p>
-        <p id="ledger-my-summary" class="ledger-home-mine" hidden></p>
-        <a id="ledger-link" href="ledger.html">장부 보기</a>
-      </section>
-      <section class="card" aria-labelledby="home-member-title">
-        <h2 id="home-member-title">내 현황</h2>
-        <p id="home-member-summary">내 납부·벌금·참석률과 키퍼·휴식 기록을 확인하세요.</p>
-        <a id="home-member-link" href="member.html">내 현황 보기</a>
-      </section>
+      <nav class="rows" aria-label="바로 가기">
+        <a id="home-rotation-link" class="row" href="rotation.html">
+          <span class="row-main"><span class="row-label">배정표</span><span class="row-sub">이번 주 참석자로 키퍼·휴식 배정</span></span>
+          <span class="row-end"><span class="row-action">배정표 만들기</span></span>
+        </a>
+        <a id="ledger-link" class="row" href="ledger.html">
+          <span class="row-main"><span class="row-label">장부</span><span id="ledger-summary" class="row-sub" aria-live="polite">장부를 불러오는 중입니다…</span><span id="ledger-my-summary" class="row-sub ledger-home-mine" hidden></span></span>
+          <span class="row-end"><span id="home-balance" class="row-figure">—</span></span>
+        </a>
+        <a id="home-member-link" class="row" href="member.html">
+          <span class="row-main"><span class="row-label">내 현황</span><span id="home-member-summary" class="row-sub">내 납부·벌금·참석률과 키퍼·휴식 기록</span></span>
+          <span class="row-end"><span class="row-action">보기</span></span>
+        </a>
+      </nav>
     </div>
     <button id="home-retry" class="secondary" type="button" hidden>홈 정보 다시 불러오기</button>
   </main>
@@ -135,8 +132,9 @@
         for (const id of ["home-poll-count", "home-balance"]) get(id).textContent = "—";
         for (const id of ["ledger-my-summary", "home-created-match"]) { get(id).textContent = ""; get(id).hidden = true; }
         get("home-member-summary").textContent = "팀 로그인 후 내 기록을 확인하세요.";
+        get("ledger-summary").classList.remove("lit-dot");
         get("home-member-link").href = pageUrl("member.html");
-        get("home-rotation-link").textContent = "배정표 만들기";
+        get("home-rotation-link").querySelector(".row-action").textContent = "배정표 만들기";
         get("share-vote").disabled = true;
         get("share-candidates").disabled = true;
         get("home-retry").hidden = true;
@@ -222,7 +220,7 @@
             get("home-created-match").textContent = `방금 등록: ${ExicanCandidates.describeMatch(handedMatch)}`;
           }
         } else get("home-match").textContent = "확정 매치를 불러오지 못했습니다. 다시 시도하세요.";
-        get("home-rotation-link").textContent = nextMatch ? `${nextMatch.match_date.slice(5).split("-").map(Number).join("/")} 배정표 만들기` : "배정표 만들기";
+        get("home-rotation-link").querySelector(".row-action").textContent = nextMatch ? `${nextMatch.match_date.slice(5).split("-").map(Number).join("/")} 배정표 만들기` : "배정표 만들기";
 
         const month = ExicanLedgerRules.monthOf(today);
         const mine = get("ledger-my-summary");
@@ -231,16 +229,20 @@
           const team = ExicanLedgerRules.teamSummary(ledger.value, month);
           const unpaid = team.unpaidMembers.reduce((sum, row) => sum + row.outstanding, 0);
           get("home-balance").textContent = formatWon(team.balance);
-          get("ledger-summary").textContent = `팀 잔액 · 이번 달 미납 ${team.unpaidMembers.length}명 (${formatWon(unpaid)})`;
+          get("ledger-summary").textContent = team.unpaidMembers.length
+            ? `이번 달 미납 ${team.unpaidMembers.length}명 · ${formatWon(unpaid)}`
+            : "이번 달 미납 없음";
+          // 점등: 주의할 것이 있을 때만
+          get("ledger-summary").classList.toggle("lit-dot", team.unpaidMembers.length > 0);
           const personal = ExicanLedgerRules.memberSummary(ledger.value, ExicanMember.getId(), month);
           mine.hidden = !ExicanMember.getId() || personal.outstanding <= 0;
           if (!mine.hidden) mine.textContent = `내 미납 ${formatWon(personal.outstanding)}`;
-        } else { get("home-balance").textContent = "—"; get("ledger-summary").textContent = "장부를 불러오지 못했습니다. 다시 시도하세요."; }
+        } else { get("home-balance").textContent = "—"; get("ledger-summary").textContent = "장부를 불러오지 못했습니다. 다시 시도하세요."; get("ledger-summary").classList.remove("lit-dot"); }
         const person = members.status === "fulfilled" && members.value.find((row) => row.id === ExicanMember.getId());
         const memberUrl = new URL(pageUrl("member.html"));
         if (person) memberUrl.searchParams.set("id", person.id);
         get("home-member-link").href = memberUrl.href;
-        get("home-member-summary").textContent = person ? `${person.name}님의 납부·벌금·참석률과 키퍼·휴식 기록을 확인하세요.` : "내 이름을 선택하고 납부·벌금·참석률과 배정 기록을 확인하세요.";
+        get("home-member-summary").textContent = person ? `${person.name} · 납부·벌금·참석률·키퍼 기록` : "내 이름을 선택하면 납부·벌금·참석률을 보여줍니다";
         get("home-retry").hidden = !results.some((result) => result.status === "rejected");
         get("home-retry").disabled = false;
         updateWeek();
