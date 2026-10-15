@@ -29,6 +29,17 @@
     return now > new Date(poll.closes_at).getTime() ? "closed" : "open";
   }
 
+  function pollTitle(poll) {
+    if (poll.title) return poll.title;
+    const [, month, day] = poll.match_date.split("-").map(Number);
+    const weekday = "일월화수목금토"[new Date(`${poll.match_date}T00:00:00Z`).getUTCDay()];
+    return `${month}/${day}(${weekday}) 경기`;
+  }
+
+  function isSpecialPoll(poll) {
+    return Boolean(poll.title) || new Date(`${poll.match_date}T00:00:00Z`).getUTCDay() !== 6;
+  }
+
   function attendanceSummary(votes, members) {
     const byMember = new Map(votes.map((vote) => [vote.member_id, vote]));
     const summary = { attend: [], absent: [], pending: [] };
@@ -44,7 +55,7 @@
   }
 
   function lateVoteRows(poll, votes, members, fine, entryDate) {
-    if (poll.cancelled) return [];
+    if (poll.cancelled || poll.fines === false) return [];
     const byMember = new Map(votes.filter((vote) => vote.poll_id === poll.id)
       .map((vote) => [vote.member_id, vote]));
     return members.filter((member) => member.active &&
@@ -54,7 +65,7 @@
       amount: fine,
       ref_poll_id: poll.id,
       entry_date: entryDate,
-      note: "투표 마감(월 13:00) 미참여"
+      note: "투표 마감 미참여"
     }));
   }
 
@@ -86,7 +97,7 @@
     return `${Math.floor(seconds / size)}${unit} ${delta < 0 ? "후" : "전"}`;
   }
 
-  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative };
+  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative };
   if (typeof window !== "undefined") window.ExicanRules = rules;
   if (typeof module !== "undefined" && module.exports) module.exports = rules;
 })();
