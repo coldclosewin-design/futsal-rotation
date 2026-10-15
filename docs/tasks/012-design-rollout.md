@@ -91,3 +91,8 @@
 - 홈 `index.html`의 `.board`·`.segments`·`.board-lines`·`.rows` 마크업을 그대로 본뜬다.
 - `styles.css` 상단 토큰 블록과 "흑연 보드", "간유리 패널", "버튼·입력", "행 목록" 섹션이 공용 어휘.
 - `js/ui.js`의 `icon()`과 `ICONS` 목록.
+
+## 추가 정리 항목 (문서화 단계에서 발견)
+- 7개 페이지의 데모 분기에 남은 `document.querySelectorAll(".topnav a")` 보정 코드는 삭제한다 (내비가 `?demo=1`을 스스로 유지함, `js/ui.js` `navLink`).
+- `styles.css` 페이지 보정 섹션의 `.ledger-tiles strong`·`.operations-stats dd`처럼 3단계 밖 글자 크기는 보드/행 목록으로 대체하면서 제거한다. 리터럴 `#fff`·`#22262d`는 토큰(`--panel-solid`, `--ink-raised` 추가 가능)으로.
+- `DESIGN.md` 끝의 "transitional" 주석에 적힌 항목이 전부 해소되면 그 주석도 지운다.
