@@ -7,27 +7,30 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>회비·벌금 장부</h1>
   <main class="ledger-page">
-    <p id="ledger-message" role="status">장부를 불러오는 중입니다…</p>
-    <div id="ledger-content" hidden>
-      <div class="ledger-month" aria-label="조회 월">
-        <button type="button" id="previous-month" aria-label="이전 달">◀</button>
+    <section class="board page-board" aria-label="장부 요약">
+      <div class="board-toolbar"><p id="ledger-board-label" class="label">장부</p><div class="ledger-month" aria-label="조회 월">
+        <button type="button" id="previous-month" aria-label="이전 달"></button>
         <label><span class="ledger-sr-only">조회 월</span><input id="ledger-month" type="month" required></label>
-        <button type="button" id="next-month" aria-label="다음 달">▶</button>
+        <button type="button" id="next-month" aria-label="다음 달"></button>
+      </div></div>
+      <div class="board-row money-row"><div><p class="board-title">팀 잔액</p><p class="label">전 기간 누적</p></div><p id="team-balance" class="display">—</p></div>
+      <div class="segments">
+        <div id="ledger-unpaid-segment" class="segment"><span class="label">이번 달 미납</span><b id="team-unpaid">—</b></div>
+        <div class="segment"><span class="label">미납자</span><b id="unpaid-count">—</b></div>
+        <div class="segment"><span class="label">이번 달 지출</span><b id="team-expense">—</b></div>
       </div>
-      <div class="ledger-tiles" aria-live="polite">
-        <div class="card"><span>팀 잔액</span><strong id="team-balance"></strong><small>전 기간 누적</small></div>
-        <div class="card"><span>이번 달 미납 합계</span><strong id="team-unpaid"></strong><small>낼 돈이 남은 멤버의 합계</small></div>
-        <div class="card"><span>미납자</span><strong id="unpaid-count"></strong><small>미정산 항목의 합계가 양수인 멤버</small></div>
-      </div>
+    </section>
+    <p id="ledger-message" role="status">장부를 불러오는 중입니다…</p>
+    <div id="ledger-content" class="page-grid" hidden>
       <div id="ledger-member-badge"></div>
       <div class="ledger-toolbar">
         <label><input type="checkbox" id="only-mine"> 내 항목만</label>
         <button type="button" class="secondary" id="open-snack">간식 청구</button>
       </div>
-      <section class="card ledger-section" aria-labelledby="member-ledger-title">
+      <section class="card ledger-section page-wide" aria-labelledby="member-ledger-title">
         <h2 id="member-ledger-title">멤버별 이번 달</h2>
         <p>이름이나 행을 누르면 항목을 펼칩니다. 음수 미납은 팀에서 받을 돈입니다.</p>
         <div class="rules-table-scroll" role="region" aria-label="멤버별 장부 표" tabindex="0">
@@ -37,7 +40,7 @@
           </table>
         </div>
       </section>
-      <section class="card ledger-section" aria-labelledby="team-ledger-title">
+      <section class="card ledger-section page-wide" aria-labelledby="team-ledger-title">
         <h2 id="team-ledger-title">팀 지출</h2>
         <p>멤버에게 귀속되지 않은 구장비·기타 입출금입니다.</p>
         <div class="rules-table-scroll" role="region" aria-label="팀 지출 표" tabindex="0">
@@ -46,7 +49,7 @@
       </section>
       <section class="card ledger-section" aria-labelledby="my-claims-title">
         <h2 id="my-claims-title">내 간식 청구</h2>
-        <ul id="my-claims" class="ledger-claims"></ul>
+        <ul id="my-claims" class="ledger-claims rows flat-rows"></ul>
       </section>
       <section class="card ledger-section" id="ledger-admin" aria-labelledby="ledger-admin-title" hidden>
         <h2 id="ledger-admin-title">회장 도구</h2>
@@ -57,7 +60,7 @@
         </div>
         <p>납부·환급이 완료된 항목을 선택해 정산하세요. 멤버별 전부 정산은 조회 중인 달에만 적용됩니다.</p>
         <h3>간식 청구 승인</h3>
-        <ul id="admin-claims" class="ledger-claims"></ul>
+        <ul id="admin-claims" class="ledger-claims rows flat-rows"></ul>
       </section>
     </div>
   </main>
@@ -91,8 +94,8 @@
       <label for="record-note">메모</label><input id="record-note" maxlength="500">
       <p class="ledger-help">회비·벌금의 납부 확인은 정산 버튼을 이용하세요. 입금은 회비와 별개의 수입을 기록합니다.</p>
       <p class="ledger-form-error" role="alert"></p>
-      <button type="submit" class="primary" data-write>기록 저장</button>
       <button type="button" class="secondary" data-close>취소</button>
+      <button type="submit" class="btn-destructive" data-write>기록 저장</button>
     </form>
   </dialog>
 
@@ -130,7 +133,8 @@
       const expanded = new Set();
       const selected = new Set();
       get("ledger-month").value = rules.monthOf(today());
-      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+      get("previous-month").innerHTML = icon("previous");
+      get("next-month").innerHTML = icon("chevron");
 
       const isAdmin = () => demo ? Boolean(member?.is_president) : role === "admin";
       const month = () => get("ledger-month").value;
@@ -147,13 +151,16 @@
       function claimHtml(claim, admin) {
         const match = matches.find((item) => item.id === claim.match_id);
         const submittedDate = claim.created_at ? ExicanRules.kstDate(claim.created_at) : "";
-        const actions = admin && claim.status === "pending" ? `<div class="ledger-toolbar"><button type="button" class="secondary" data-review="${escapeHtml(claim.id)}" data-status="approved" data-write>승인</button><button type="button" class="secondary" data-review="${escapeHtml(claim.id)}" data-status="rejected" data-write>거절</button></div>` : "";
-        return `<li><strong>${escapeHtml(nameOf(claim.buyer_id))} · ${formatWon(claim.amount)}</strong><span class="ledger-claim-status">${statusLabel[claim.status] || "상태 확인 필요"}</span><p>${escapeHtml(claim.items || "품목 없음")}</p><small>${escapeHtml(match ? matchLabel(match) : "매치 정보 없음")} · ${escapeHtml(submittedDate)}</small>${actions}</li>`;
+        const actions = admin && claim.status === "pending" ? `<div class="claim-actions"><button type="button" class="primary" data-review="${escapeHtml(claim.id)}" data-status="approved" data-write>승인</button><button type="button" class="btn-destructive" data-review="${escapeHtml(claim.id)}" data-status="rejected" data-write>거절</button></div>` : "";
+        return `<li class="row claim-row"><div class="claim-summary"><span class="row-main"><span class="row-label">${escapeHtml(nameOf(claim.buyer_id))}</span><span class="row-sub">${escapeHtml(claim.items || "품목 없음")}</span></span><span class="row-figure">${formatWon(claim.amount)}</span></div><span class="row-sub">${escapeHtml(match ? matchLabel(match) : "매치 정보 없음")} · ${escapeHtml(submittedDate)}</span><span class="ledger-claim-status">${statusLabel[claim.status] || "상태 확인 필요"}</span>${actions}</li>`;
       }
 
       function render() {
         const currentRows = monthRows();
         const summary = rules.teamSummary(rows, month());
+        get("ledger-board-label").textContent = `장부 · ${month()}`;
+        get("team-expense").textContent = formatWon(summary.expense);
+        get("ledger-unpaid-segment").classList.toggle("is-lit", summary.unpaidMembers.length > 0);
         get("team-balance").textContent = formatWon(summary.balance);
         get("team-unpaid").textContent = formatWon(summary.unpaidMembers.reduce((sum, row) => sum + row.outstanding, 0));
         get("unpaid-count").textContent = `${summary.unpaidMembers.length}명`;
@@ -165,14 +172,14 @@
           const id = `ledger-detail-${person.id}`;
           const outstanding = total.outstanding < 0 ? `받을 돈 ${formatWon(-total.outstanding)}` : formatWon(total.outstanding);
           const settleAll = isAdmin() && entries.some((row) => !row.settled) ? `<button type="button" class="secondary" data-settle-member="${escapeHtml(person.id)}" data-write>${escapeHtml(person.name)} 전부 정산</button>` : "";
-          return `<tr data-member="${escapeHtml(person.id)}"><th scope="row"><button type="button" class="ledger-expand" data-expand="${escapeHtml(person.id)}" aria-controls="${escapeHtml(id)}" aria-expanded="${expanded.has(person.id)}">${escapeHtml(person.name)} ${expanded.has(person.id) ? "▴" : "▾"}</button></th><td>${formatWon(total.due)}</td><td>${formatWon(total.exempt)}</td><td>${formatWon(total.fine)}</td><td>${formatWon(total.refund)}</td><td>${formatWon(total.settled)}</td><td class="ledger-outstanding ${total.outstanding < 0 ? "ledger-refund" : ""}">${outstanding}</td></tr>
+          return `<tr data-member="${escapeHtml(person.id)}"><th scope="row"><button type="button" class="ledger-expand" data-expand="${escapeHtml(person.id)}" aria-controls="${escapeHtml(id)}" aria-expanded="${expanded.has(person.id)}">${escapeHtml(person.name)} ${icon(expanded.has(person.id) ? "up" : "down", 16)}</button></th><td>${formatWon(total.due)}</td><td>${formatWon(total.exempt)}</td><td>${formatWon(total.fine)}</td><td>${formatWon(total.refund)}</td><td>${formatWon(total.settled)}</td><td class="ledger-outstanding ${total.outstanding < 0 ? "ledger-refund" : total.outstanding > 0 ? "lit-dot" : ""}">${outstanding}</td></tr>
             <tr id="${escapeHtml(id)}" ${expanded.has(person.id) ? "" : "hidden"}><td colspan="7" class="ledger-details">${settleAll}<table class="ledger-entry-table"><caption>${escapeHtml(person.name)} ${escapeHtml(month())} 항목</caption><thead><tr><th scope="col">날짜</th><th scope="col">항목</th><th scope="col">금액</th><th scope="col">메모</th><th scope="col">정산 여부</th></tr></thead><tbody>${entries.map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 기록이 없습니다.</td></tr>"}</tbody></table></td></tr>`;
         }).join("") || "<tr><td colspan=\"7\">표시할 멤버가 없습니다.</td></tr>";
         get("team-ledger").innerHTML = currentRows.filter((row) => row.member_id == null).map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 팀 지출이 없습니다.</td></tr>";
-        get("my-claims").innerHTML = claims.filter((claim) => claim.buyer_id === member?.id).map((claim) => claimHtml(claim, false)).join("") || "<li>내 청구가 없습니다.</li>";
+        get("my-claims").innerHTML = claims.filter((claim) => claim.buyer_id === member?.id).map((claim) => claimHtml(claim, false)).join("") || "<li class=\"row\">내 청구가 없습니다.</li>";
         get("ledger-admin").hidden = !isAdmin();
         get("ledger-admin-title").textContent = demo ? "회장 도구 · 데모" : "회장 도구";
-        get("admin-claims").innerHTML = isAdmin() ? claims.map((claim) => claimHtml(claim, true)).join("") || "<li>청구가 없습니다.</li>" : "";
+        get("admin-claims").innerHTML = isAdmin() ? claims.map((claim) => claimHtml(claim, true)).join("") || "<li class=\"row\">청구가 없습니다.</li>" : "";
         if (member) ExicanMember.renderBadge(get("ledger-member-badge"), member, async () => {
           ExicanMember.clear();
           member = await ExicanMember.ensure(members.filter((person) => person.active));
@@ -235,6 +242,7 @@
       function recordDefaults() {
         const category = get("record-kind").value;
         const fine = category.startsWith("fine_");
+        get("record-form").querySelector("[type=submit]").className = fine ? "btn-destructive" : "primary";
         const team = ["venue_fee", "deposit", "adjustment"].includes(category);
         get("record-member").innerHTML = (team ? "<option value=\"\">팀 (대상 없음)</option>" : "<option value=\"\">멤버 선택</option>") +
           members.filter((person) => person.active).map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.name)}</option>`).join("");
@@ -369,6 +377,7 @@
             get("ledger-message").hidden = false;
             get("ledger-message").textContent = "팀 로그인 후 장부를 확인하세요";
             render();
+            for (const id of ["team-balance", "team-unpaid", "unpaid-count", "team-expense"]) get(id).textContent = "—";
           } else {
             await refresh();
             member = await ExicanMember.ensure(members.filter((person) => person.active));

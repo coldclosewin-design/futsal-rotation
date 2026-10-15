@@ -7,28 +7,37 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
 
-  <div class="section" id="rotation-integration">
+  <main class="rotation-page page-grid">
+    <section class="board page-board" aria-label="배정 요약">
+      <div class="board-row"><div><p class="label">키퍼·휴식 배정</p><p id="rotation-board-date" class="board-title">오늘</p></div><p id="rotation-count" class="display" aria-label="선택된 참가자 수">0</p></div>
+      <div class="segments">
+        <div class="segment"><span class="label">포맷</span><b id="rotation-format">5v5</b></div>
+        <div id="rotation-min-segment" class="segment is-dim"><span class="label">최소 인원</span><b id="rotation-minimum">5명 필요</b></div>
+        <div class="segment"><span class="label">연동 상태</span><b id="rotation-connection">확인 중</b></div>
+      </div>
+    </section>
+  <div class="section page-wide" id="rotation-integration">
     <div id="rotation-member"></div>
     <button type="button" id="load-attendees" disabled>이번 주 참석자 불러오기</button>
     <p id="rotation-notice" role="status">팀 연결을 확인하는 중입니다. 수동 배정은 그대로 사용할 수 있습니다.</p>
   </div>
 
   <div class="section">
-    <h2>오늘 참가자 선택 <span id="minHint" style="font-size:12px; color:#888; font-weight:400;">(5v5: 5명 이상, 6v6: 6명 이상)</span></h2>
+    <h2>오늘 참가자 선택 <span id="minHint" class="meta">(5v5: 5명 이상, 6v6: 6명 이상)</span></h2>
     <div class="member-grid" id="memberGrid"></div>
     <div class="count-info" id="countInfo">0명 선택</div>
   </div>
 
-  <div class="section" id="partialSection" style="display:none">
+  <div class="section hidden" id="partialSection">
     <details>
-      <summary style="cursor:pointer; font-weight:600; font-size:15px; color:#444;">
-        ⏱ 중간 이탈/늦참 설정 (선택 안 하면 전원 Q1~Q8 전체 참여)
+      <summary class="partial-heading">
+        중간 이탈/늦참 설정 (선택 안 하면 전원 Q1~Q8 전체 참여)
       </summary>
-      <div id="partialList" style="margin-top:10px;"></div>
-      <p style="font-size:12px; color:#888; margin:8px 0 0;">
+      <div id="partialList" class="partial-list"></div>
+      <p class="meta partial-hint">
         조기 퇴장자는 필드 위주 배치(GK·휴식 최소화), 나머지 인원이 더 자주 서게 됩니다.
       </p>
     </details>
@@ -43,23 +52,21 @@
     <button class="primary" id="generateBtn" disabled>배정표 생성</button>
   </div>
 
-  <div class="section hidden" id="resultSection">
-    <h2>배정 결과 <span id="shuffleInfo" style="font-size:12px; color:#888; font-weight:400;"></span></h2>
-    <table class="result-table" id="resultTable"></table>
+  <div class="section hidden page-wide" id="resultSection">
+    <h2>배정 결과 <span id="shuffleInfo" class="meta"></span></h2>
+    <div class="result-scroll" role="region" aria-label="배정 결과표" tabindex="0"><table class="result-table" id="resultTable"></table></div>
     <div class="summary" id="summary"></div>
-    <div id="warnings" style="margin-top:8px; font-size:13px; color:#b45309;"></div>
-    <button class="secondary" id="shuffleBtn">다시 섞기 (다른 조합)</button>
-    <button class="copy" id="copyBtn">카톡에 복사</button>
-    <div id="rotation-save" hidden>
+    <div id="warnings" class="meta rotation-warnings"></div>
+    <div class="home-actions"><button class="secondary" id="shuffleBtn">다시 섞기</button><button class="primary" id="copyBtn">카톡에 복사</button></div>
+    <div id="rotation-save" class="rows flat-rows" hidden>
       <label>저장할 매치<select id="rotation-match"></select></label>
-      <button type="button" id="save-rotation">이번 매치에 저장</button>
+      <div class="row"><span class="row-label">회장 저장</span><button type="button" class="row-action" id="save-rotation">이번 매치에 저장</button></div>
       <p id="rotation-save-message" role="status"></p>
     </div>
   </div>
 
-  <div class="link-row">
-    <a href="admin.html">멤버 관리</a>
-  </div>
+  <nav class="rows page-wide" aria-label="멤버 관리 이동"><a id="rotation-admin-link" class="row" href="admin.html"><span class="row-label">멤버 관리</span><span class="row-action">관리 화면</span></a></nav>
+  </main>
 
   <div class="toast" id="toast"></div>
 
@@ -79,7 +86,22 @@
     const integration = { connected: false, admin: false, members: [], poll: null, matches: [], result: null, saving: false };
     const demo = ExicanData.mode() === "demo";
     const explicitDemo = new URLSearchParams(location.search).get("demo") === "1";
-    if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
+    if (demo) document.getElementById("rotation-admin-link").search = "?demo=1";
+    document.getElementById("shuffleBtn").innerHTML = `${icon("shuffle", 18)} 다시 섞기`;
+    document.getElementById("copyBtn").innerHTML = `${icon("copy", 18)} 카톡에 복사`;
+    function updateRotationBoard() {
+      const count = document.querySelectorAll("#memberGrid input:checked").length;
+      const format = document.querySelector('input[name="format"]:checked').value;
+      const minimum = format === "5v5" ? 5 : 6;
+      const match = integration.matches.find((row) => row.id === document.getElementById("rotation-match").value) || integration.matches[0];
+      document.getElementById("rotation-count").textContent = count;
+      document.getElementById("rotation-format").textContent = format;
+      document.getElementById("rotation-minimum").textContent = count >= minimum ? "충족" : `${minimum}명 필요`;
+      document.getElementById("rotation-min-segment").classList.toggle("is-dim", count < minimum);
+      document.getElementById("rotation-connection").textContent = integration.connected ? "팀 연결" : "수동 배정";
+      document.getElementById("rotation-board-date").textContent = integration.connected ? match?.match_date || integration.poll?.match_date || "오늘" : "오늘";
+    }
+    document.getElementById("rotation-match").addEventListener("change", updateRotationBoard);
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
 
     async function loadMembers() {
@@ -90,6 +112,9 @@
           if (!members.length) throw new Error("활동 멤버가 없습니다");
           integration.members = members;
           integration.connected = true;
+          const [poll, matches] = await Promise.allSettled([ExicanData.currentPoll(), ExicanData.matches({ from: ExicanRules.kstDate(new Date()) })]);
+          integration.poll = poll.status === "fulfilled" ? poll.value : null;
+          integration.matches = matches.status === "fulfilled" ? matches.value.filter((row) => row.status === "scheduled") : [];
           integration.admin = demo ? members.some((member) => member.id === ExicanMember.getId() && member.is_president) : role === "admin";
           document.getElementById("load-attendees").disabled = false;
           document.getElementById("rotation-notice").textContent = demo ? "데모 투표와 매치에 연결되었습니다. 저장 결과는 새로고침하면 초기화됩니다." : "이번 주 투표 참석자를 불러올 수 있습니다.";
@@ -147,10 +172,10 @@
         const list = document.getElementById("partialList");
         const selectedMembers = members.filter((m) => selected.has(m.id));
         if (selectedMembers.length === 0) {
-          wrap.style.display = "none";
+          wrap.classList.add("hidden");
           return;
         }
-        wrap.style.display = "";
+        wrap.classList.remove("hidden");
         list.innerHTML = "";
         for (const m of selectedMembers) {
           const cur = partials[m.id] || { start: 1, end: TOTAL_QUARTERS };
@@ -196,6 +221,7 @@
           btn.disabled = true;
         }
         rebuildPartialUI();
+        updateRotationBoard();
       };
       document.querySelectorAll('input[name="format"]').forEach((radio) => {
         radio.addEventListener("change", updateCount);
@@ -225,6 +251,7 @@
         grid.appendChild(label);
       }
 
+      updateCount();
       let currentContext = null;
       document.getElementById("load-attendees").addEventListener("click", async () => {
         const button = document.getElementById("load-attendees");
@@ -249,7 +276,7 @@
           const schedule = buildSchedule(chosen, format, quartersMap, offset);
           const v = validateSchedule(schedule, chosen.length, format, quartersMap);
           if (!v.ok) {
-            alert("배정 검증 실패:\n- " + v.errors.join("\n- "));
+            alert("배정 검증 실패:\n- " + v.errors.join("\n- ").replace(/\u2192/g, "~"));
             return;
           }
           currentContext.offset = offset;
@@ -336,7 +363,8 @@
 
     function showFatal(msg) {
       const box = document.createElement("div");
-      box.style.cssText = "background:#fee;border:1px solid #c00;color:#900;padding:12px;margin:12px 0;border-radius:8px;font-size:13px;white-space:pre-wrap;";
+      box.className = "fatal";
+      box.setAttribute("role", "alert");
       box.textContent = "진단: " + msg;
       document.body.insertBefore(box, document.body.firstChild);
     }
@@ -350,6 +378,7 @@
       const select = document.getElementById("rotation-match");
       const selected = select.value || integration.matches.find((match) => match.match_date === integration.poll?.match_date)?.id;
       select.innerHTML = integration.matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selected ? "selected" : ""}>${escapeHtml(match.match_date)} ${escapeHtml(match.start_time.slice(0, 5))} · ${escapeHtml(match.venue || "구장 미정")}</option>`).join("");
+      updateRotationBoard();
       document.getElementById("save-rotation").disabled = !integration.matches.length;
       document.getElementById("rotation-save-message").textContent = integration.matches.length ? "생성한 배정표를 선택한 매치에 저장합니다." : "저장할 예정 매치가 없습니다.";
     }
@@ -379,6 +408,7 @@
       document.getElementById("load-attendees").disabled = !integration.connected;
       document.getElementById("rotation-save").hidden = !integration.admin || !integration.result;
       if (!integration.admin) document.getElementById("rotation-match").textContent = "";
+      updateRotationBoard();
     }).catch((error) => { document.getElementById("rotation-notice").textContent = error.message; });
 
     loadMembers()

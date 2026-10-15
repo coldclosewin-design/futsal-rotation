@@ -331,5 +331,3 @@ components:
 - **Don't** 새 글자 크기(13, 14, 18, 20…)나 두 번째 반경, 두 번째 강조색을 들이지 않는다.
 - **Don't** 보드 위에 `ink` 계열, 바닥 위에 `board-ink` 계열 글자를 올리지 않는다.
 - **Don't** 상단 가로 내비(`.topnav`)를 되살리지 않는다. 셸은 탭바(모바일)와 레일(데스크톱)이다.
-
-<!-- 과도기 메모(시스템 규칙 아님): vote/matches/ledger/rotation/member/rules/admin.html은 styles.css의 셸·패널·버튼·입력·모달·토스트를 상속하지만 페이지별 섹션(.ledger-tiles strong clamp(28,8vw,40), .operations-stats dd clamp(24,7vw,32) 등 세 단계 밖의 크기, rotation.html의 인라인 style·#444/#888, 각 페이지 데모 스크립트의 .topnav 셀렉터 잔존)은 아직 재구성 전이다. 이 값들은 시스템에 편입하지 않는다. -->

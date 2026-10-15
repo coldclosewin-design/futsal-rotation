@@ -7,9 +7,17 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>팀 관리</h1>
-  <main class="operations-page">
+  <main class="operations-page admin-page">
+    <section id="admin-board" class="board page-board" aria-label="팀 관리 요약" hidden>
+      <div class="board-row"><div><p class="label">팀 관리</p><p class="board-title">회장 도구</p></div><p id="admin-dday" class="display" aria-label="다가오는 매치까지 남은 날">—</p></div>
+      <div class="segments">
+        <div id="admin-claims-segment" class="segment"><span class="label">대기 청구</span><b id="admin-claims-count">—</b></div>
+        <div id="admin-attendance-segment" class="segment"><span class="label">출석 미입력</span><b id="admin-attendance-count">—</b></div>
+        <div class="segment"><span class="label">활동 멤버</span><b id="admin-active-count">—</b></div>
+      </div>
+    </section>
     <div id="admin-identity"></div>
     <section id="admin-gate" class="section"><p id="admin-message" role="status">권한을 확인하는 중입니다…</p><button id="admin-login" type="button" hidden>회장 로그인</button><button id="admin-retry" type="button" hidden>다시 불러오기</button></section>
     <div id="admin-content"></div>
@@ -35,16 +43,18 @@
       const today = () => ExicanRules.kstDate(new Date());
       const dateAgo = (days) => new Date(Date.parse(`${today()}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10);
       const dialog = get("admin-dialog");
-      let members = [], polls = [], votes = [], matches = [], attendances = new Map();
+      let members = [], polls = [], votes = [], matches = [], claims = [], attendances = new Map();
       let role = "anon", tab = "members", busy = false, version = 0, allowed = false;
-      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
       const nameOf = (id) => members.find((person) => person.id === id)?.name || id;
       const option = (value, label, selected) => `<option value="${e(value)}" ${value === selected ? "selected" : ""}>${e(label)}</option>`;
 
       function clearPrivate() {
         version += 1;
         allowed = false;
-        members = []; polls = []; votes = []; matches = []; attendances.clear();
+        members = []; polls = []; votes = []; matches = []; claims = []; attendances.clear();
+        get("admin-board").hidden = true;
+        for (const id of ["admin-dday", "admin-claims-count", "admin-attendance-count", "admin-active-count"]) get(id).textContent = "—";
+        for (const id of ["admin-claims-segment", "admin-attendance-segment"]) get(id).classList.remove("is-lit");
         get("admin-content").textContent = "";
         dialog.close(); dialog.textContent = "";
       }
@@ -81,22 +91,34 @@
 
       function render() {
         if (!allowed) return;
-        get("admin-content").innerHTML = `<div class="operations-tabs" aria-label="관리 항목">${[["members", "멤버"], ["polls", "투표"], ["matches", "매치"]].map(([key, label]) => `<button type="button" data-tab="${key}" aria-pressed="${tab === key}">${label}</button>`).join("")}</div><section class="section" id="admin-panel"></section>`;
+        const upcoming = matches.filter((match) => match.status === "scheduled" && match.match_date >= today()).sort((a, b) => a.match_date.localeCompare(b.match_date))[0];
+        const days = upcoming ? Math.round((Date.parse(`${upcoming.match_date}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86400000) : null;
+        const pending = claims.filter((claim) => claim.status === "pending").length;
+        const missing = matches.filter((match) => match.status === "played" && match.match_date <= today() && !(attendances.get(match.id) || []).length).length;
+        get("admin-board").hidden = false;
+        get("admin-dday").textContent = days === null ? "—" : days === 0 ? "D-day" : `D-${days}`;
+        get("admin-claims-count").textContent = `${pending}건`;
+        get("admin-attendance-count").textContent = `${missing}경기`;
+        get("admin-active-count").textContent = `${members.filter((person) => person.active).length}명`;
+        get("admin-claims-segment").classList.toggle("is-lit", pending > 0);
+        get("admin-attendance-segment").classList.toggle("is-lit", missing > 0);
+        get("admin-content").innerHTML = `<div class="operations-tabs" aria-label="관리 항목">${[["members", "멤버"], ["polls", "투표"], ["matches", "매치"]].map(([key, label]) => `<button type="button" data-tab="${key}" aria-pressed="${tab === key}">${label}</button>`).join("")}</div><div id="admin-panel"></div>`;
         const panel = get("admin-panel");
+        panel.className = tab === "members" ? "section" : "operations-panel";
         if (tab === "members") {
           panel.innerHTML = `<h2>멤버</h2><p class="operations-hint">members.json은 오프라인 폴백용입니다. 이 화면의 변경은 팀 데이터에 반영됩니다.</p><button type="button" data-new-member>새 멤버</button><p class="operations-hint">표를 좌우로 밀어 연락처와 계좌를 확인하세요.</p><div class="operations-scroll" tabindex="0" role="region" aria-label="멤버 목록"><table class="operations-table"><thead><tr>${["이름", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌", "편집"].map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${members.map((person) => `<tr class="${person.active ? "" : "operations-inactive"}"><th scope="row">${e(person.name)}</th><td>${person.active ? "활동" : "비활성"}</td><td>${person.is_president ? "회장" : "—"}</td><td>${e(person.joined_at || "—")}</td><td>${e(person.injury_from || "—")} ~ ${e(person.injury_to || "—")}</td><td>${e(person.phone || "—")}</td><td>${e(person.bank_account || "—")}</td><td><button type="button" data-edit-member="${e(person.id)}">${e(person.name)} 편집</button></td></tr>`).join("")}</tbody></table></div>`;
         } else if (tab === "polls") {
-          panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>다음 투표 생성</button>${polls.map((poll) => {
+          panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>다음 투표 생성</button><div class="page-grid">${polls.map((poll) => {
             const ballot = votes.filter((vote) => vote.poll_id === poll.id);
             const summary = ExicanRules.attendanceSummary(ballot, members);
             const status = { scheduled: "예정", open: "진행 중", closed: "마감", cancelled: "취소" }[ExicanRules.pollStatus(poll, new Date().toISOString())];
-            return `<article class="operations-poll"><h3>${e(poll.match_date)} · ${status}</h3><p>참석 ${summary.attend.length} · 불참 ${summary.absent.length} · 미투표 ${summary.pending.length}</p><label><input type="checkbox" data-cancel-poll="${e(poll.id)}" ${poll.cancelled ? "checked" : ""}> 투표 취소</label><details><summary>멤버별 투표 보기</summary><ul>${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
+            return `<article class="operations-poll"><h3>${e(poll.match_date)} · ${status}</h3><p>참석 ${summary.attend.length} · 불참 ${summary.absent.length} · 미투표 ${summary.pending.length}</p><details><summary>멤버별 투표 보기</summary><ul>${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
               const vote = ballot.find((row) => row.member_id === person.id);
               return `<li>${e(person.name)} · ${vote ? vote.choice === "attend" ? "참석" : "불참" : "미투표"}${vote?.is_late ? " · 지각 투표" : ""}</li>`;
-            }).join("")}</ul></details></article>`;
-          }).join("") || "<p>투표가 없습니다.</p>"}`;
+            }).join("")}</ul></details><button type="button" class="btn-destructive" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "투표 취소 해제" : "투표 취소"}</button></article>`;
+          }).join("") || "<p>투표가 없습니다.</p>"}</div>`;
         } else {
-          panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<a href="ledger.html">장부에서 기록 확인 →</a>'}${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<h3>${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}`).join("")}<div id="admin-ledger-preview"></div>`;
+          panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<nav class="rows"><a class="row" href="ledger.html"><span class="row-label">장부에서 기록 확인</span><span class="row-action">보기</span></a></nav>'}<div class="page-grid">${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<section><h3 class="operations-list-title">${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}</section>`).join("")}</div><div id="admin-ledger-preview"></div>`;
         }
       }
 
@@ -110,7 +132,7 @@
             const existing = saved.find((row) => row.member_id === person.id);
             const selected = existing?.status || (ballot.some((vote) => vote.member_id === person.id && vote.choice === "attend") ? "present" : "");
             return `<fieldset><legend>${e(person.name)}</legend><div class="operations-radios">${Object.entries({ ...rules.ATTENDANCE_LABELS, "": "해당 없음" }).map(([value, label]) => `<label><input type="radio" name="${e(person.id)}" value="${value}" ${selected === value ? "checked" : ""} ${existing && !value ? "disabled" : ""}>${label}</label>`).join("")}</div></fieldset>`;
-          }).join("")}<p class="operations-hint">이미 저장된 출석은 ‘사유 불참’ 등 다른 상태로 정정하세요. ‘해당 없음’은 새 기록을 추가하지 않습니다.</p><button type="submit">출석 저장</button></form><button type="button" data-fines="${e(match.id)}">출석 벌금 생성</button></details>` : ""}
+          }).join("")}<p class="operations-hint">이미 저장된 출석은 ‘사유 불참’ 등 다른 상태로 정정하세요. ‘해당 없음’은 새 기록을 추가하지 않습니다.</p><button type="submit">출석 저장</button></form><button type="button" class="btn-destructive" data-fines="${e(match.id)}">출석 벌금 생성</button></details>` : ""}
           <div class="operations-actions"><button type="button" data-exempt="${e(match.id)}">회장 면제 기록</button><button type="button" data-venue="${e(match.id)}" ${match.cost <= 0 ? "disabled" : ""}>구장비 기록</button></div></article>`;
       }
 
@@ -127,10 +149,10 @@
           get("admin-login").hidden = false;
           return;
         }
-        const [ballots, games] = await Promise.all([data.polls({ from: dateAgo(56) }), data.matches()]);
+        const [ballots, games, requests] = await Promise.all([data.polls({ from: dateAgo(56) }), data.matches(), data.snackClaims()]);
         const [ballotVotes, records] = await Promise.all([data.votesByPolls([...new Set([...ballots.map((poll) => poll.id), ...games.map((match) => match.poll_id).filter(Boolean)])]), Promise.all(games.map((match) => data.attendance(match.id)))]);
         if (request !== version) return;
-        members = people; polls = ballots; votes = ballotVotes; matches = games;
+        members = people; polls = ballots; votes = ballotVotes; matches = games; claims = requests;
         attendances = new Map(games.map((match, index) => [match.id, records[index]]));
         allowed = true;
         get("admin-gate").hidden = true;
@@ -149,7 +171,7 @@
       }
 
       function previewRows(rows, title, noun) {
-        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="submit" ${rows.length ? "" : "disabled"}>확인 · 기록</button><button type="button" class="secondary" data-close>취소</button></form>`, () => write(async () => {
+        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="${noun === "벌금" ? "btn-destructive" : "primary"}" ${rows.length ? "" : "disabled"}>확인 · 기록</button></form>`, () => write(async () => {
           let count = 0, duplicate = 0;
           for (const row of rows) {
             try { await data.addLedger(row); count += 1; }
@@ -179,6 +201,10 @@
         if (!button || busy || !allowed) return;
         try {
           if (button.dataset.tab) { tab = button.dataset.tab; render(); return; }
+          if (button.dataset.cancelPoll) {
+            const poll = polls.find((row) => row.id === button.dataset.cancelPoll);
+            write(async () => { await data.cancelPoll(poll.id, !poll.cancelled); return "투표 상태를 저장했습니다"; });
+          }
           if (button.hasAttribute("data-new-member")) editMember();
           if (button.dataset.editMember) editMember(button.dataset.editMember);
           if (button.hasAttribute("data-create-poll")) write(async () => {
@@ -202,7 +228,6 @@
 
       get("admin-content").addEventListener("change", (event) => {
         const input = event.target;
-        if (input.dataset.cancelPoll) write(async () => { await data.cancelPoll(input.dataset.cancelPoll, input.checked); return "투표 상태를 저장했습니다"; });
         if (input.name === "status") {
           for (const key of ["score_us", "score_them"]) input.form.elements[key].required = input.value === "played";
         }
