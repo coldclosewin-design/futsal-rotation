@@ -7,21 +7,13 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>FC EXICAN 회칙</h1>
 
-  <main class="rules-page">
-    <section class="section" aria-labelledby="rules-summary-title">
+  <main class="rules-page page-grid">
+    <section class="rules-summary" aria-labelledby="rules-summary-title">
       <h2 id="rules-summary-title">벌금·회비 한눈에</h2>
-      <div class="rules-table-scroll" role="region" aria-labelledby="rules-summary-title" tabindex="0">
-        <table class="rules-table">
-          <thead>
-            <tr><th scope="col">항목</th><th scope="col">금액</th><th scope="col">기준</th></tr>
-          </thead>
-          <tbody id="rules-fees"></tbody>
-        </table>
-      </div>
-      <p class="rules-table-hint">표가 화면보다 넓으면 좌우로 밀어 확인하세요.</p>
+      <div id="rules-fees" class="rows"></div>
     </section>
 
     <article id="rules-content" class="rules-document" aria-label="회칙 전문" aria-busy="true">
@@ -29,12 +21,12 @@
     </article>
     <noscript><p>회칙을 보려면 JavaScript를 켜거나 <a href="docs/rules.md">회칙 원문</a>을 확인하세요.</p></noscript>
 
-    <aside class="rules-notice">회칙 개정 제안은 매월 24일까지 운영위원장에게</aside>
-    <section class="section" aria-labelledby="history-title">
+    <aside class="rules-notice page-wide">회칙 개정 제안은 매월 24일까지 운영위원장에게</aside>
+    <section class="section page-wide" aria-labelledby="history-title">
       <h2 id="history-title">경기 기록</h2>
       <button type="button" id="load-history">불러오기(팀 로그인)</button>
       <p id="history-message" role="status">팀 로그인 후 경기 기록을 확인할 수 있습니다.</p>
-      <div id="match-history"></div>
+      <div id="match-history" class="rows flat-rows"></div>
     </section>
   </main>
 
@@ -52,7 +44,6 @@
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("rules");
       const demo = ExicanData.mode() === "demo";
-      if (demo) document.querySelectorAll(".topnav a").forEach((link) => { link.search = "?demo=1"; });
       let historyVersion = 0;
       document.getElementById("load-history").onclick = async () => {
         const button = document.getElementById("load-history");
@@ -67,8 +58,8 @@
           const rows = await ExicanData.matchHistory();
           if (request !== historyVersion) return;
           const e = escapeHtml;
-          document.getElementById("match-history").innerHTML = rows.length ? `<div class="operations-scroll" role="region" aria-label="경기 기록 표" tabindex="0"><table class="operations-table"><thead><tr>${["날짜", "구장", "상대", "포맷", "스코어", "참석 수", "상태"].map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr><th scope="row">${e(row.match_date)}</th><td>${e(row.venue || "—")}</td><td>${e(row.opponent || "—")}</td><td>${e(row.format || "—")}</td><td>${row.score_us == null || row.score_them == null ? "—" : `${e(row.score_us)}:${e(row.score_them)}`}</td><td>${row.attendance_count}명</td><td>${e(ExicanAttendance.MATCH_LABELS[row.status])}</td></tr>`).join("")}</tbody></table></div>` : "";
-          message.textContent = rows.length ? `최근 ${rows.length}경기 · 표를 좌우로 밀어 확인하세요.` : "경기 기록이 없습니다.";
+          document.getElementById("match-history").innerHTML = rows.map((row) => `<div class="row"><span class="row-main"><span class="row-label">${e(row.match_date)} · ${e(row.venue || "구장 미정")}</span><span class="row-sub">${e(row.opponent || "상대 미정")} · ${e(row.format || "포맷 미정")} · ${row.attendance_count}명 · ${e(ExicanAttendance.MATCH_LABELS[row.status])}</span></span><span class="row-figure">${row.score_us == null || row.score_them == null ? "—" : `${e(row.score_us)}:${e(row.score_them)}`}</span></div>`).join("");
+          message.textContent = rows.length ? `최근 ${rows.length}경기` : "경기 기록이 없습니다.";
         } catch (error) { message.textContent = error.message; }
         finally { button.disabled = false; }
       };
@@ -90,17 +81,7 @@
         ["지각(15분 전 미도착)", FINES.LATE, "경기 시작 15분 전까지 미도착"],
         ["경기 시작 후 도착", FINES.LATE_KICKOFF, "경기 시작 이후 도착"]
       ];
-      const tbody = document.getElementById("rules-fees");
-      for (const [label, amount, criteria] of fees) {
-        const row = document.createElement("tr");
-        for (const [index, text] of [label, formatWon(amount), criteria].entries()) {
-          const cell = document.createElement(index === 0 ? "th" : "td");
-          if (index === 0) cell.scope = "row";
-          cell.textContent = text;
-          row.appendChild(cell);
-        }
-        tbody.appendChild(row);
-      }
+      document.getElementById("rules-fees").innerHTML = fees.map(([label, amount, criteria]) => `<div class="row"><span class="row-main"><span class="row-label">${escapeHtml(label)}</span><span class="row-sub">${escapeHtml(criteria)}</span></span><span class="row-figure">${formatWon(amount)}</span></div>`).join("");
 
       const content = document.getElementById("rules-content");
       try {

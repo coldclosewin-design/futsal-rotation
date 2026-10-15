@@ -7,9 +7,17 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>매칭 후보</h1>
   <main class="matches-page">
+    <section class="board page-board" aria-label="매칭 후보 요약">
+      <div class="board-row"><div><p class="label">매칭 후보</p><p class="board-title">이번 주 토요일 오전</p></div><p id="matches-total" class="display" aria-label="기본 필터 후보 수">—</p></div>
+      <div class="segments">
+        <div id="matches-fresh-segment" class="segment"><span class="label">새 후보 · 미분류</span><b id="matches-fresh">—</b></div>
+        <div class="segment"><span class="label">마감 포함</span><b id="matches-closed">제외</b></div>
+        <div class="segment"><span class="label">내 추천</span><b id="matches-mine">—</b></div>
+      </div>
+    </section>
     <div id="match-member" class="member-badge"></div>
     <section class="match-filters card" aria-label="후보 필터">
       <div id="region-filters" class="filter-chips" aria-label="지역"></div>
@@ -24,7 +32,7 @@
     </section>
     <p id="matches-message" role="status">후보를 불러오는 중입니다…</p>
     <button id="matches-retry" class="secondary" type="button" hidden>다시 시도</button>
-    <a id="confirmed-home" class="match-home-link" href="index.html" hidden>홈에서 등록 매치 확인 →</a>
+    <nav class="rows" id="confirmed-home-row" aria-label="확정 매치 이동" hidden><a id="confirmed-home" class="row" href="index.html"><span class="row-main"><span class="row-label">등록 매치</span><span class="row-sub">홈에서 확정 내용을 확인하세요</span></span><span class="row-action">보기</span></a></nav>
     <section id="ranked-candidates" class="candidate-list" aria-label="매칭 후보"></section>
     <section id="unparsed-section" hidden>
       <h2>미분류</h2>
@@ -51,6 +59,7 @@
       const message = document.getElementById("matches-message");
       const retry = document.getElementById("matches-retry");
       const homeLink = document.getElementById("confirmed-home");
+      const homeRow = document.getElementById("confirmed-home-row");
       const menuIds = Object.keys(EXICAN_CONFIG.CAFE.MENUS).map(Number);
       const filterKey = "exican_match_filters";
       const costKey = "exican_candidate_costs";
@@ -80,9 +89,6 @@
       const storedCosts = readStorage(costKey);
       const costs = storedCosts && typeof storedCosts === "object" && !Array.isArray(storedCosts) ? storedCosts : {};
       if (demo) {
-        document.querySelectorAll(".topnav a").forEach((link) => {
-          if (["index.html", "vote.html", "matches.html"].some((path) => link.getAttribute("href") === path)) link.search = "?demo=1";
-        });
         homeLink.href = "index.html?demo=1";
       }
 
@@ -122,6 +128,7 @@
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = label;
+          button.className = "chip";
           button.setAttribute("aria-pressed", String(id === null ? filters.menuIds === null : Boolean(filters.menuIds?.includes(id))));
           button.addEventListener("click", () => {
             if (id === null) filters.menuIds = null;
@@ -174,10 +181,24 @@
         button.disabled = reacting.has(row.article_id);
         namesButton.title = button.title;
       }
-      function renderCard(row) {
+      function renderBoard() {
+        const defaults = api.filterCandidates(rows, api.DEFAULT_FILTERS, today());
+        const now = Date.now();
+        const fresh = [...defaults.ranked, ...defaults.unparsed].filter((row) => now - Date.parse(row.first_seen_at) >= 0 && now - Date.parse(row.first_seen_at) < 86400000).length;
+        document.getElementById("matches-total").textContent = defaults.ranked.length;
+        document.getElementById("matches-fresh").textContent = `${fresh}건 · ${defaults.unparsed.length}건`;
+        document.getElementById("matches-fresh-segment").classList.toggle("is-lit", fresh > 0);
+        document.getElementById("matches-closed").textContent = filters.includeClosed ? "포함" : "제외";
+        document.getElementById("matches-mine").textContent = `${reactions.filter((reaction) => reaction.member_id === member?.id && rows.some((row) => String(row.article_id) === String(reaction.article_id))).length}건`;
+      }
+      function renderCard(row, index) {
         const card = document.createElement("article");
         card.className = "card candidate-card";
         card.dataset.articleId = row.article_id;
+        const rank = document.createElement("p");
+        rank.className = "row-figure candidate-rank";
+        rank.textContent = row.parse_ok ? String(index + 1).padStart(2, "0") : "미분류";
+        card.appendChild(rank);
         const header = document.createElement("div");
         header.className = "candidate-heading";
         const heading = document.createElement("h3");
@@ -186,6 +207,8 @@
         link.target = "_blank";
         link.rel = "noopener";
         link.textContent = row.subject;
+        const age = Date.now() - Date.parse(row.first_seen_at);
+        if (age >= 0 && age < 86400000) link.className = "lit-dot";
         heading.appendChild(link);
         const score = document.createElement("small");
         score.textContent = `${row.scraper_score}점`;
@@ -229,6 +252,7 @@
             reacting.delete(row.article_id);
             const current = document.querySelector(`[data-article-id="${row.article_id}"]`);
             if (current) refreshReaction(row, current.querySelector(".reaction-button"), current.querySelector(".candidate-actions .secondary"));
+            renderBoard();
           }
         });
         actions.append(reaction, names);
@@ -238,6 +262,7 @@
         return card;
       }
       function renderCards() {
+        renderBoard();
         const result = api.filterCandidates(rows, filters, today());
         document.getElementById("candidate-count").textContent = `후보 ${result.ranked.length}건 (미분류 ${result.unparsed.length}건)`;
         const ranked = document.getElementById("ranked-candidates");
@@ -271,7 +296,7 @@
           <div class="contact-status-actions" aria-label="연락 상태"></div>
           <p class="match-help">상태 버튼은 누르는 즉시 저장됩니다. 연락처·메모·우선순위는 아래 [저장]을 누르세요.</p>
           <button type="submit" class="primary">저장</button>
-          <div class="sms-actions"><button type="button" class="secondary" data-copy>문자 문구 복사</button><a data-sms>문자 앱 열기</a></div>
+          <div class="home-actions"><button type="button" class="secondary" data-copy>문자 문구 복사</button><a class="button" data-sms>문자 앱 열기</a></div>
           <details class="sms-preview"><summary>문자 문구 미리보기</summary><p></p></details>`;
         if (!drafts.has(id)) drafts.set(id, { phone: row.phone || "", memo: row.memo || "", our_priority: row.our_priority ?? "",
           cost: costs[id] ?? "", contact_status: row.contact_status || "new" });
@@ -292,14 +317,17 @@
             // 상태는 누르는 즉시 저장한다 (연락처·메모는 [저장] 버튼으로).
             form.requestSubmit();
           });
-          statusActions.appendChild(button);
+          if (status === "rejected") {
+            button.className = "btn-destructive";
+            form.appendChild(button);
+          } else statusActions.appendChild(button);
         }
         function smsText() {
           return ExicanSms.buildSmsText(row, { attendCount, format: row.parsed_format?.split(",")[0], teamName: EXICAN_CONFIG.TEAM_NAME }, EXICAN_CONFIG);
         }
         function updateDraft() {
           for (const key of ["phone", "memo", "our_priority", "cost"]) draft[key] = form.elements[key].value;
-          statusActions.querySelectorAll("button").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.status === draft.contact_status)));
+          form.querySelectorAll("button[data-status]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.status === draft.contact_status)));
           const sms = form.querySelector("[data-sms]");
           const href = ExicanSms.smsHref(draft.phone, smsText(), /iPhone|iPad|iPod/.test(navigator.userAgent));
           if (href) sms.href = href; else sms.removeAttribute("href");
@@ -421,7 +449,7 @@
               if (!savedMatch) savedMatch = await ExicanData.createMatch(match);
               knownMatches = knownMatches.filter((item) => item.id !== savedMatch.id).concat(savedMatch);
               latestCreated = savedMatch;
-              homeLink.hidden = false;
+              homeRow.hidden = false;
             }
             fieldset.disabled = true;
             await requireAdmin();
@@ -431,7 +459,7 @@
             state.close();
             renderCards();
             showToast("매치 등록됨");
-            homeLink.hidden = false;
+            homeRow.hidden = false;
           } catch (error) {
             const description = savedMatch ? `매치는 등록되었습니다. 후보 상태 저장을 다시 시도하세요: ${error.message}` : error.message;
             form.querySelector(".auth-error").textContent = description;
@@ -472,6 +500,17 @@
           ]);
           if (request !== version) return;
           rows = candidates;
+          if (demo) {
+            // 픽스처에 수집 시각이 없으면 작성 시각 간격을 사용해 데모 점등을 재현한다.
+            const latest = Math.max(...rows.map((row) => Date.parse(row.first_seen_at || row.write_ts)).filter(Number.isFinite));
+            if (Number.isFinite(latest)) {
+              const offset = Date.now() - latest - 3600000;
+              rows = rows.map((row) => {
+                const seen = Date.parse(row.first_seen_at || row.write_ts);
+                return { ...row, first_seen_at: Number.isFinite(seen) ? new Date(seen + offset).toISOString() : row.first_seen_at };
+              });
+            }
+          }
           members = roster;
           poll = current;
           attendCount = poll ? ExicanRules.attendanceSummary(votes, members).count : null;
@@ -501,8 +540,8 @@
               if (modal) modal.close();
               if (role === "anon") {
                 version += 1;
-                rows = []; members = []; member = null;
-                homeLink.hidden = true;
+                rows = []; members = []; member = null; reactions = [];
+                homeRow.hidden = true;
                 latestCreated = null;
                 message.hidden = false;
                 message.textContent = "팀 로그인 후 후보를 확인하세요";

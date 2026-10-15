@@ -7,22 +7,26 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="rollout-page">
   <h1>이번 주 참석 투표</h1>
-  <main class="vote-page">
-    <p id="page-message" role="status">투표를 불러오는 중입니다…</p>
-    <section id="poll-panel" class="card" aria-labelledby="poll-title" hidden>
-      <div class="poll-heading">
-        <h2 id="poll-title"></h2>
-        <span id="poll-status" class="poll-status"></span>
+  <main class="vote-page page-grid">
+    <section class="board page-board" aria-label="이번 주 투표 요약">
+      <div class="board-row"><div><p class="label">이번 주 투표</p><p id="poll-title" class="board-title">경기 확인 중</p></div><p class="display" id="poll-count" aria-label="참석 인원">—</p></div>
+      <div class="segments">
+        <div class="segment is-dim" id="poll-state-segment"><span class="label">상태</span><b id="poll-status">확인 중</b></div>
+        <div class="segment"><span class="label">마감까지</span><b id="poll-deadline">—</b></div>
+        <div class="segment"><span class="label">가능 포맷</span><b id="poll-formats">—</b></div>
       </div>
-      <p id="poll-deadline"></p>
+    </section>
+    <p id="page-message" role="status">투표를 불러오는 중입니다…</p>
+    <section id="poll-panel" class="card" aria-labelledby="vote-title" hidden>
+      <h2 id="vote-title">참석 여부</h2>
       <div id="member-badge"></div>
       <div class="vote-actions" aria-label="참석 여부">
         <button type="button" data-choice="attend" aria-pressed="false">참석</button>
         <button type="button" data-choice="absent" aria-pressed="false">불참</button>
       </div>
-      <p id="vote-notice"></p>
+      <p id="vote-notice" class="meta"></p>
     </section>
     <section id="attendance-panel" class="card" aria-labelledby="attendance-title" hidden>
       <h2 id="attendance-title">투표 현황</h2>
@@ -31,8 +35,8 @@
     </section>
     <section id="admin-panel" class="card" aria-labelledby="admin-title" hidden>
       <h2 id="admin-title">회장 도구</h2>
-      <label class="poll-cancel"><input type="checkbox" id="poll-cancel"> 투표 취소</label>
-      <button class="secondary" type="button" id="create-poll">다음 투표 지금 생성</button>
+      <div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">다음 투표</span><span class="row-sub">다가오는 토요일 경기</span></span><button class="row-action" type="button" id="create-poll">다음 투표 생성</button></div></div>
+      <button class="btn-destructive" type="button" id="poll-cancel">투표 취소</button>
     </section>
   </main>
 
@@ -47,9 +51,6 @@
     document.addEventListener("DOMContentLoaded", async () => {
       renderNav("vote");
       const demo = ExicanData.mode() === "demo";
-      if (demo) {
-        document.querySelectorAll('.topnav a[href="index.html"], .topnav a[href="vote.html"]').forEach((link) => { link.search = "?demo=1"; });
-      }
       const rules = ExicanRules;
       const message = document.getElementById("page-message");
       const buttons = Array.from(document.querySelectorAll("[data-choice]"));
@@ -68,23 +69,31 @@
         document.getElementById("admin-panel").hidden = !admin;
         document.getElementById("admin-title").textContent = demo ? "회장 도구 · 데모" : "회장 도구";
         cancel.disabled = !poll || busy;
-        cancel.checked = Boolean(poll?.cancelled);
+        cancel.textContent = poll?.cancelled ? "투표 취소 해제" : "투표 취소";
         create.disabled = busy;
         document.getElementById("poll-panel").hidden = !poll;
         document.getElementById("attendance-panel").hidden = !poll;
-        if (!poll) return;
+        if (!poll) {
+          document.getElementById("poll-title").textContent = "투표 없음";
+          for (const id of ["poll-count", "poll-deadline", "poll-formats"]) document.getElementById(id).textContent = "—";
+          document.getElementById("poll-status").textContent = "없음";
+          document.getElementById("poll-state-segment").className = "segment is-dim";
+          return;
+        }
         const [, month, day] = poll.match_date.split("-");
-        document.getElementById("poll-title").textContent = `${Number(month)}/${Number(day)}(토) 경기 참석 투표`;
+        document.getElementById("poll-title").textContent = `${Number(month)}/${Number(day)}(토) 경기`;
         const status = rules.pollStatus(poll, now);
         const badge = document.getElementById("poll-status");
         badge.textContent = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[status];
         badge.dataset.status = status;
+        document.getElementById("poll-state-segment").className = `segment${status === "open" ? " is-lit" : status === "scheduled" || status === "cancelled" ? " is-dim" : ""}`;
         const deadline = document.getElementById("poll-deadline");
         const remaining = Math.max(0, Math.ceil((new Date(poll.closes_at) - new Date(now)) / 60000));
         const days = Math.floor(remaining / 1440);
         const hours = Math.floor(remaining % 1440 / 60);
         const duration = days ? `${days}일 ${hours}시간` : hours ? `${hours}시간 ${remaining % 60}분` : `${remaining}분`;
-        deadline.textContent = `월 13:00 마감 · ${status === "cancelled" ? "취소된 투표" : status === "closed" ? rules.formatRelative(poll.closes_at, now) + " 마감" : "남은 시간 " + duration}`;
+        deadline.textContent = status === "cancelled" ? "취소" : status === "closed" ? "마감" : duration;
+        deadline.title = "월요일 13:00 마감";
         if (member) ExicanMember.renderBadge(document.getElementById("member-badge"), member, async () => {
           ExicanMember.clear();
           member = await ExicanMember.ensure(members);
@@ -98,7 +107,9 @@
         document.getElementById("vote-notice").textContent = status === "closed" ? "마감 후 투표는 벌금 대상입니다" :
           status === "scheduled" ? "일요일 13:00부터 투표할 수 있습니다" : status === "cancelled" ? "취소된 투표에는 참여할 수 없습니다" : "마감 전까지 참석 여부를 변경할 수 있습니다";
         const summary = rules.attendanceSummary(votes, members);
-        document.getElementById("attendance-summary").textContent = `참석 ${summary.count}명 → ` +
+        document.getElementById("poll-count").textContent = summary.count;
+        document.getElementById("poll-formats").textContent = Object.entries(summary.formats).filter(([, info]) => info.ok).map(([format]) => format).join(" · ") || "인원 부족";
+        document.getElementById("attendance-summary").textContent = `참석 ${summary.count}명 · ` +
           Object.entries(summary.formats).map(([format, info]) => info.ok ? `${format} 가능 (휴식 ${info.rest}명)` : `${format} 불가 (인원 부족)`).join(" · ");
         const lists = document.getElementById("attendance-lists");
         lists.textContent = "";
@@ -111,6 +122,7 @@
           for (const person of summary[key]) {
             const item = document.createElement("li");
             const name = document.createElement("span");
+            if (key === "pending" && status === "open") name.className = "lit-dot";
             name.textContent = person.name;
             item.appendChild(name);
             const vote = votes.find((row) => row.member_id === person.id);
@@ -159,8 +171,8 @@
         votes = votes.filter((vote) => vote.member_id !== saved.member_id).concat(saved);
         showToast(`${saved.choice === "attend" ? "참석" : "불참"}으로 저장했습니다${saved.is_late ? " · 지각 투표" : ""}`);
       })));
-      cancel.addEventListener("change", () => {
-        const checked = cancel.checked;
+      cancel.addEventListener("click", () => {
+        const checked = !poll.cancelled;
         mutate(async () => {
           poll = await ExicanData.setPollCancelled(poll.id, checked);
           showToast(checked ? "투표를 취소했습니다" : "투표 취소를 해제했습니다");
