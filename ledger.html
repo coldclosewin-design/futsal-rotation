@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>장부 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261016b">
 </head>
 <body class="rollout-page">
   <h1>회비·벌금 장부</h1>
   <main class="ledger-page">
+      <div id="ledger-member-badge" class="identity-line"></div>
     <section class="board page-board" aria-label="장부 요약">
       <div class="board-toolbar"><p id="ledger-board-label" class="label">장부</p><div class="ledger-month" aria-label="조회 월">
         <button type="button" id="previous-month" aria-label="이전 달"></button>
@@ -25,13 +26,12 @@
     </section>
     <p id="ledger-message" role="status">장부를 불러오는 중입니다…</p>
     <div id="ledger-content" class="page-grid" hidden>
-      <div id="ledger-member-badge"></div>
-      <div class="ledger-toolbar">
-        <label><input type="checkbox" id="only-mine"> 내 항목만</label>
-        <button type="button" class="secondary" id="open-snack">간식 청구</button>
-      </div>
       <section class="card ledger-section page-wide" aria-labelledby="member-ledger-title">
         <h2 id="member-ledger-title">멤버별 이번 달</h2>
+        <div class="ledger-toolbar">
+        <label><input type="checkbox" id="only-mine"> 내 항목만</label>
+        <button type="button" class="secondary" id="open-snack">간식 청구</button>
+        </div>
         <p>이름이나 행을 누르면 항목을 펼칩니다. 음수 미납은 팀에서 받을 돈입니다.</p>
         <div class="rules-table-scroll" role="region" aria-label="멤버별 장부 표" tabindex="0">
           <table class="ledger-table">

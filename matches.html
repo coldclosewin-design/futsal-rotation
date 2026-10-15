@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 후보 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261016b">
 </head>
 <body class="rollout-page">
   <h1>매칭 후보</h1>
   <main class="matches-page">
+    <div id="match-member" class="member-badge identity-line"></div>
     <section class="board page-board" aria-label="매칭 후보 요약">
       <div class="board-row"><div><p class="label">매칭 후보</p><p class="board-title">이번 주 토요일 오전</p></div><p id="matches-total" class="display" aria-label="기본 필터 후보 수">—</p></div>
       <div class="segments">
@@ -18,7 +19,6 @@
         <div class="segment"><span class="label">내 추천</span><b id="matches-mine">—</b></div>
       </div>
     </section>
-    <div id="match-member" class="member-badge"></div>
     <section class="match-filters card" aria-label="후보 필터">
       <div id="region-filters" class="filter-chips" aria-label="지역"></div>
       <div class="filter-options">

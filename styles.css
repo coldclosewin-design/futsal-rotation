@@ -372,7 +372,7 @@ tbody th { font-weight: 600; }
 .partial-row select { width: auto; min-height: 36px; padding: 4px 8px; font-size: var(--fs-body); }
 .link-row { text-align: center; margin: 12px auto; }
 .link-row a { font-size: var(--fs-label); color: var(--ink-3); }
-#rotation-integration { margin-top: 12px; }
+#rotation-integration { margin-top: -32px; position: relative; z-index: 1; }
 #rotation-save { border-top: var(--hair); padding-top: 16px; margin-top: 20px; }
 #rotation-save-message, #rotation-notice { font-size: var(--fs-label); color: var(--ink-3); line-height: 1.6; overflow-wrap: anywhere; }
 .json-preview { width: 100%; min-height: 180px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--fs-label); }
@@ -648,3 +648,26 @@ tbody th { font-weight: 600; }
 .poll-form .home-actions { margin-top: 16px; }
 .home-page .special-poll-link { margin-top: 16px; padding: 12px 0 0; border-top: var(--hair); font-size: var(--fs-label); }
 .home-page .special-poll-link[hidden] { display: none; }
+
+/* --------------------------------------------------------------------------
+   전 페이지 공통 구조: [h1] → [신원 줄] → 보드(베드) → 첫 패널이 베드 하단을 덮음
+   -------------------------------------------------------------------------- */
+.page-board { position: relative; z-index: 0; margin: 0 calc(-1 * var(--gutter)) 0; padding: 18px var(--gutter) 44px; border: 0; border-radius: 0 0 calc(var(--r) * 2) calc(var(--r) * 2); }
+.page-grid > .page-board { margin-bottom: 0; }
+.page-board + .card, .page-board + .section, .page-board + .match-filters, .page-board + .page-grid,
+.page-board + [role="status"] + .card, .page-board + [role="status"] + .page-grid,
+.page-board + [role="status"] + [hidden] + .page-grid,
+#admin-content, #member-content, #ledger-content { position: relative; z-index: 1; margin-top: -32px; }
+.page-board + [role="status"] { position: relative; margin-top: 12px; padding: 0 2px; font-size: var(--fs-label); color: var(--ink-3); }
+.page-grid > .page-board + .card, .page-grid > .page-board + .section { margin-top: -32px; }
+.identity-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: var(--fs-label); color: var(--ink-3); }
+.identity-line:empty { display: none; }
+.identity-line select { width: auto; min-height: 36px; padding: 4px 10px; font-size: var(--fs-body); }
+.identity-line button { width: auto; min-height: 32px; margin: 0; padding: 4px 10px; font-size: var(--fs-label); }
+.matches-page .filter-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin-top: 8px; }
+.matches-page .filter-options label { min-height: var(--tap); }
+.matches-page .filter-options select { width: auto; }
+.ledger-section .ledger-toolbar { margin: 0 0 12px; }
+@media (min-width: 900px) {
+  .page-board { margin: 0; padding: 16px 20px 44px; border-radius: calc(var(--r) * 2); border: 1px solid var(--board-seam); }
+}

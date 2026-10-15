@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>참석 투표 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261016b">
 </head>
 <body class="rollout-page">
   <h1>참석 투표</h1>
   <main class="vote-page page-grid">
+    <div id="member-badge" class="identity-line page-wide"></div>
     <nav id="poll-switch" class="poll-switch page-wide" aria-label="투표 선택" hidden></nav>
     <section class="board page-board" aria-label="선택한 투표 요약">
       <div class="board-row"><div><p class="label">참석 투표</p><p id="poll-title" class="board-title">경기 확인 중</p><div id="poll-badges" class="poll-badges"></div></div><p class="display" id="poll-count" aria-label="참석 인원">—</p></div>
@@ -22,7 +23,6 @@
     <p id="page-message" role="status">투표를 불러오는 중입니다…</p>
     <section id="poll-panel" class="card" aria-labelledby="vote-title" hidden>
       <h2 id="vote-title">참석 여부</h2>
-      <div id="member-badge"></div>
       <div class="vote-actions" aria-label="참석 여부">
         <button type="button" data-choice="attend" aria-pressed="false">참석</button>
         <button type="button" data-choice="absent" aria-pressed="false">불참</button>
