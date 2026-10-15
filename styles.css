@@ -705,7 +705,8 @@ tbody th { font-weight: 600; }
 .matches-page > .match-filters { top: 0; }
 
 /* 014: 공개 도움말과 팀 PIN 모달 안내 링크. */
-.help-page ol { padding-left: 20px; display: grid; gap: 8px; }
-.help-page h3 { margin-top: 16px; }
-.help-page > .page-wide { grid-column: 1 / -1; }
+.help-page .rules-document ol { margin: 8px 0; padding-left: 20px; }
+.help-page .rules-document ol > li + li { margin-top: 6px; }
+.help-page .rules-document h3 { margin-top: 20px; font-size: var(--fs-body); font-weight: 700; }
+.help-page > .page-wide { grid-column: 1 / -1; grid-row: auto; }
 .modal-help { display: block; margin-top: 12px; font-size: var(--fs-label); color: var(--ink-3); text-align: center; }
