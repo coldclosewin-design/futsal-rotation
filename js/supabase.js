@@ -139,6 +139,7 @@ if (typeof window !== "undefined") {
         <p class="auth-error" id="auth-error" role="alert" aria-live="polite"></p>
         <button class="primary" type="submit">확인</button>
         ${account === "admin" ? '<button class="secondary" type="button" data-cancel>취소</button>' : ""}
+        ${account === "team" ? '<a class="modal-help" href="help.html">처음이세요? 도움말</a>' : ""}
       `;
       const input = form.querySelector("input");
       const errorMessage = form.querySelector(".auth-error");
@@ -188,7 +189,7 @@ if (typeof window !== "undefined") {
         if (event.key === "Escape") event.preventDefault();
         if (event.key === "Tab") {
           event.preventDefault();
-          const cycle = [input, submit, cancel].filter((element) => element && !element.disabled);
+          const cycle = [input, submit, cancel, form.querySelector(".modal-help")].filter((element) => element && !element.disabled);
           const index = cycle.indexOf(document.activeElement);
           cycle[(index + (event.shiftKey ? cycle.length - 1 : 1)) % cycle.length].focus();
         }
