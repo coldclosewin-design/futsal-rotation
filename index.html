@@ -25,7 +25,6 @@
         </div>
         <div class="board-lines">
           <p id="home-match" class="board-line" aria-live="polite">확정 매치를 불러오는 중입니다…</p>
-          <p id="home-created-match" class="board-line" hidden></p>
         </div>
         <p id="home-week" class="ledger-sr-only" role="status">이번 주 일정을 확인하는 중입니다…</p>
       </section>
@@ -82,7 +81,7 @@
       renderNav("home");
       const demo = ExicanData.mode() === "demo";
       const get = (id) => document.getElementById(id);
-      let version = 0, role = "anon", handedMatch = null;
+      let version = 0, role = "anon";
       let poll = null, weeklyPoll = null, pollSummary = null, ranked = [], nextMatch = null, confirmedDates = [];
       let pollState = "loading", matchState = "loading";
       const pageUrl = (page) => {
@@ -92,12 +91,6 @@
       };
       if (demo) {
         document.querySelectorAll("a[href$='.html']").forEach((link) => { link.search = "?demo=1"; });
-        try {
-          const saved = sessionStorage.getItem("exican_demo_match_handoff");
-          sessionStorage.removeItem("exican_demo_match_handoff");
-          const value = saved ? JSON.parse(saved) : null;
-          if (value && /^demo-match-/.test(value.id) && /^\d{4}-\d{2}-\d{2}$/.test(value.match_date) && typeof value.start_time === "string") handedMatch = value;
-        } catch (error) { /* 006의 일회성 전달이 없으면 기본 데모 매치를 표시한다. */ }
       }
 
       function updateWeek() {
@@ -131,7 +124,7 @@
         pollState = "signed-out"; matchState = "signed-out";
         for (const id of ["weekly-poll-summary", "home-candidates", "home-match", "ledger-summary"]) get(id).textContent = message;
         for (const id of ["home-poll-count", "home-balance"]) get(id).textContent = "—";
-        for (const id of ["ledger-my-summary", "home-created-match", "home-special-polls"]) { get(id).textContent = ""; get(id).hidden = true; }
+        for (const id of ["ledger-my-summary", "home-special-polls"]) { get(id).textContent = ""; get(id).hidden = true; }
         get("home-member-summary").textContent = "팀 로그인 후 내 기록을 확인하세요.";
         get("ledger-summary").classList.remove("lit-dot");
         get("home-member-link").href = pageUrl("member.html");
@@ -196,7 +189,8 @@
         ranked = [];
         if (candidates.status === "fulfilled") {
           const rows = demo ? ExicanCandidates.shiftDemoDates(candidates.value, today) : candidates.value;
-          ranked = ExicanCandidates.filterCandidates(rows, ExicanCandidates.DEFAULT_FILTERS, today).ranked.slice(0, 3);
+          ranked = ExicanCandidates.filterCandidates(rows, { ...ExicanCandidates.DEFAULT_FILTERS,
+            staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today, new Date().toISOString()).ranked.slice(0, 3);
           if (!ranked.length) candidateCard.textContent = "이번 주 토요일 오전 후보가 아직 없습니다";
           else {
             const list = document.createElement("ol");
@@ -218,17 +212,22 @@
 
         matchState = matches.status === "fulfilled" ? "ready" : "error";
         nextMatch = null; confirmedDates = [];
-        get("home-created-match").hidden = true;
         if (matches.status === "fulfilled") {
-          let rows = demo ? ExicanCandidates.shiftDemoDates(matches.value, today) : matches.value;
-          if (demo && handedMatch) rows = rows.filter((row) => row.id !== handedMatch.id).concat(handedMatch);
+          const rows = demo ? ExicanCandidates.shiftDemoDates(matches.value, today) : matches.value;
           confirmedDates = rows.filter((row) => row.status === "scheduled").map((row) => row.match_date);
           nextMatch = rows.filter((row) => row.match_date >= today && row.status === "scheduled")
             .sort((a, b) => `${a.match_date}${a.start_time}`.localeCompare(`${b.match_date}${b.start_time}`))[0] || null;
-          get("home-match").textContent = nextMatch ? ExicanCandidates.describeMatch(nextMatch) : "확정된 매치가 없습니다";
-          if (demo && handedMatch && nextMatch?.id !== handedMatch.id) {
-            get("home-created-match").hidden = false;
-            get("home-created-match").textContent = `방금 등록: ${ExicanCandidates.describeMatch(handedMatch)}`;
+          get("home-match").textContent = "확정된 매치가 없습니다";
+          if (nextMatch) {
+            const link = document.createElement("a");
+            link.id = "home-match-link";
+            link.href = pageUrl("matches.html#confirmed-matches");
+            link.textContent = ExicanCandidates.describeMatch(nextMatch);
+            const hint = document.createElement("span");
+            hint.className = "board-link-hint";
+            hint.textContent = "상세";
+            link.appendChild(hint);
+            get("home-match").replaceChildren(link);
           }
         } else get("home-match").textContent = "확정 매치를 불러오지 못했습니다. 다시 시도하세요.";
         get("home-rotation-link").querySelector(".row-action").textContent = nextMatch ? `${nextMatch.match_date.slice(5).split("-").map(Number).join("/")} 배정표 만들기` : "배정표 만들기";

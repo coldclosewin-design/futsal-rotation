@@ -21,14 +21,17 @@
     return result;
   }
 
-  function filterCandidates(rows, filters, todayKst) {
+  function filterCandidates(rows, filters, todayKst, nowIso) {
     const options = { ...DEFAULT_FILTERS, ...filters };
+    const staleMs = (options.staleHours ?? 72) * 3600000;
+    const now = Date.parse(nowIso);
     const ranked = [];
     const unparsed = [];
     for (const row of rows) {
       if (row.parsed_date && row.parsed_date < todayKst) continue;
+      if (nowIso && row.last_seen_at && row.contact_status === "new" && now - Date.parse(row.last_seen_at) > staleMs) continue;
       if (options.menuIds && !options.menuIds.includes(row.menu_id)) continue;
-      if (!options.includeClosed && row.is_closed) continue;
+      if (!options.includeClosed && row.is_closed && row.contact_status !== "confirmed") continue;
       const formats = (row.parsed_format || "").split(",").map((item) => item.trim());
       if (options.formats && !options.formats.some((format) => formats.includes(format))) continue;
       if (!row.parse_ok) {
@@ -79,6 +82,15 @@
     return `${date} ${time} · ${row.venue || "구장 미정"} · ${row.format || "포맷 미정"} · 구장비 ${Number(row.cost || 0).toLocaleString("ko-KR")}원`;
   }
 
+  function describeMatchDetail(match) {
+    const date = describeSchedule({ parsed_date: match.match_date }).replace(" 시간 미정", "");
+    const time = match.start_time ? `${match.start_time.slice(0, 5)}${match.end_time ? "~" + match.end_time.slice(0, 5) : ""}` : "시간 미정";
+    return {
+      title: `${date} ${time} · ${match.venue || "구장 미정"}`,
+      sub: `${match.opponent ? "상대 " + match.opponent : "상대 미정"} · ${match.format || "포맷 미정"} · 구장비 ${Number(match.cost || 0).toLocaleString("ko-KR")}원${match.memo ? " · " + match.memo : ""}`
+    };
+  }
+
   function buildCandidatePatch(fields, nowIso) {
     const priority = fields.our_priority === "" || fields.our_priority == null ? null : Number(fields.our_priority);
     if (priority !== null && ![1, 2, 3].includes(priority)) throw new Error("우선순위는 1~3 중 선택하세요");
@@ -106,7 +118,7 @@
   }
 
   const api = { DEFAULT_FILTERS, STATUS_LABELS, normalizeFilters, filterCandidates, describeSchedule, nextStatus,
-    shiftDemoDates, describeMatch, buildCandidatePatch, buildMatchRow };
+    shiftDemoDates, describeMatch, describeMatchDetail, buildCandidatePatch, buildMatchRow };
   if (typeof window !== "undefined") window.ExicanCandidates = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })();

@@ -710,3 +710,8 @@ tbody th { font-weight: 600; }
 .help-page .rules-document h3 { margin-top: 20px; font-size: var(--fs-body); font-weight: 700; }
 .help-page > .page-wide { grid-column: 1 / -1; grid-row: auto; }
 .modal-help { display: block; margin-top: 12px; font-size: var(--fs-label); color: var(--ink-3); text-align: center; }
+
+/* 015: 홈 확정 매치 링크와 확정 매치 행의 관리 바로가기. */
+.board-line a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.board-link-hint { margin-left: 8px; font-size: var(--fs-label); color: var(--board-muted); }
+.row-end .secondary { margin-left: 8px; }

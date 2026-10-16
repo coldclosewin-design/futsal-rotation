@@ -160,3 +160,119 @@ test("확정 입력은 날짜·시간·정수 금액·포맷과 회장을 검사
   assert.throws(() => api.buildMatchRow(base, fields, { poll: null }), /회장/);
   assert.equal(api.buildMatchRow(base, { ...fields, end_time: "24:00" }, context).end_time, "24:00");
 });
+
+const now = "2026-10-15T03:00:00Z";
+const seenHoursAgo = (hours) => new Date(Date.parse(now) - hours * 3600000).toISOString();
+
+for (const parseOk of [true, false]) {
+  const candidate = { ...base, parse_ok: parseOk, contact_status: "new" };
+  const group = parseOk ? "ranked" : "unparsed";
+  test(`${group}: 73시간 된 미연락 글은 만료하지만 72시간 경계와 최근 글은 유지한다`, () => {
+    const inputs = [73, 72, 1].map((hours) => ({ ...candidate, article_id: hours, last_seen_at: seenHoursAgo(hours) }));
+    assert.deepEqual(api.filterCandidates(inputs, {}, today, now)[group].map((row) => row.article_id), [72, 1]);
+    assert.equal(api.filterCandidates(inputs, { staleHours: 74 }, today, now)[group].length, 3);
+    assert.equal(api.filterCandidates(inputs, { staleHours: 24 }, today, now)[group].length, 1);
+    assert.equal(api.filterCandidates(inputs, {}, today)[group].length, 3);
+  });
+  test(`${group}: 마지막 수집 시각이 없거나 잘못되면 유지한다`, () => {
+    for (const lastSeen of [undefined, null, "", "invalid"]) {
+      assert.equal(api.filterCandidates([{ ...candidate, last_seen_at: lastSeen }], {}, today, now)[group].length, 1);
+    }
+    assert.equal(api.filterCandidates([{ ...candidate, last_seen_at: seenHoursAgo(73) }], {}, today, "invalid")[group].length, 1);
+  });
+  test(`${group}: 회장이 연락 상태를 변경한 글은 73시간이 지나도 유지한다`, () => {
+    for (const status of ["contacted", "replied", "confirmed", "rejected"]) {
+      assert.equal(api.filterCandidates([{ ...candidate, contact_status: status, last_seen_at: seenHoursAgo(73) }], {}, today, now)[group].length, 1);
+    }
+  });
+  test(`${group}: 마감된 확정 글은 기본 필터에서 유지하고 과거 글은 제외한다`, () => {
+    const confirmed = { ...candidate, is_closed: true, contact_status: "confirmed", last_seen_at: seenHoursAgo(73) };
+    assert.equal(api.filterCandidates([confirmed], {}, today, now)[group].length, 1);
+    assert.equal(api.filterCandidates([{ ...confirmed, contact_status: "new" }], {}, today)[group].length, 0);
+    assert.equal(api.filterCandidates([{ ...confirmed, parsed_date: "2026-10-14" }], {}, today, now)[group].length, 0);
+  });
+}
+
+test("만료 시간을 사용자 필터에 저장하지 않고 시각 없는 데모 후보 4건·미분류 1건을 유지한다", () => {
+  assert.equal(Object.hasOwn(api.DEFAULT_FILTERS, "staleHours"), false);
+  assert.equal(Object.hasOwn(api.normalizeFilters({ staleHours: 1 }, [623]), "staleHours"), false);
+  const result = api.filterCandidates(rows, { staleHours: 72 }, today, now);
+  assert.equal(result.ranked.length, 4);
+  assert.equal(result.unparsed.length, 1);
+});
+
+for (const opponent of [null, "테스트팀"]) {
+  for (const memo of [null, "입장 10분 전 집합"]) {
+    test(`확정 매치 상세: 상대 ${opponent ? "있음" : "없음"}, 메모 ${memo ? "있음" : "없음"}`, () => {
+      assert.deepEqual(api.describeMatchDetail({ ...fixture.matches[0], opponent, memo }), {
+        title: "10/17(토) 08:00~10:00 · 도봉풋살장",
+        sub: `${opponent ? "상대 테스트팀" : "상대 미정"} · 6v6 · 구장비 60,000원${memo ? " · 입장 10분 전 집합" : ""}`
+      });
+    });
+  }
+}
+
+test("확정 매치 상세는 구장·포맷 미정, 종료 시각 생략과 시간 미정을 표시한다", () => {
+  assert.deepEqual(api.describeMatchDetail({ match_date: "2026-10-17", start_time: "08:30:00" }), {
+    title: "10/17(토) 08:30 · 구장 미정", sub: "상대 미정 · 포맷 미정 · 구장비 0원"
+  });
+  assert.equal(api.describeMatchDetail({ match_date: "2026-10-18" }).title, "10/18(일) 시간 미정 · 구장 미정");
+});
+
+function candidateData(client, demoRows) {
+  const context = { URLSearchParams, location: { search: demoRows ? "?demo=1" : "" },
+    isConfigured: () => true, ExicanAuth: { init: async () => client }, showToast: () => {},
+    document: { querySelector: () => ({}) },
+    fetch: async () => ({ ok: true, json: async () => ({ polls: [], poll_votes: [], match_candidates: demoRows }) }),
+    window: { ExicanRules: { kstDate: () => today } } };
+  runInNewContext(readFileSync(join(__dirname, "../js/data.js"), "utf8"), context);
+  return context.window.ExicanData;
+}
+
+test("seenSince 데모 조회는 시각 없는 픽스처와 연락한 미분류를 유지하고 오래된 미연락은 제외한다", async () => {
+  const stale = { ...base, article_id: 1, parsed_date: null, parse_ok: false, last_seen_at: seenHoursAgo(73), contact_status: "new" };
+  const data = candidateData(null, [...rows, stale, { ...stale, article_id: 2, contact_status: "contacted" }]);
+  const result = await data.candidates({ includeClosed: true, seenSince: seenHoursAgo(72) });
+  assert.equal(result.length, rows.length + 1);
+  assert.equal(result.some((row) => row.article_id === 1), false);
+  assert.equal(result.some((row) => row.article_id === 2), true);
+});
+
+test("seenSince 라이브 조회는 서버 시각 제한과 날짜 없는 예외 조회를 합친다", async () => {
+  const calls = [];
+  const fresh = { ...base, article_id: 1, scraper_score: 10 };
+  const contacted = { ...base, article_id: 2, scraper_score: 20, parsed_date: null, contact_status: "contacted" };
+  const failure = new Error("예외 글 조회 실패");
+  let fail = false;
+  const client = { from(table) {
+    assert.equal(table, "match_candidates");
+    const operations = [];
+    calls.push(operations);
+    const query = {};
+    for (const method of ["select", "order", "gte", "lte", "eq", "is", "or"]) {
+      query[method] = (...args) => { operations.push([method, ...args]); return query; };
+    }
+    query.then = (resolve, reject) => {
+      const exception = operations.some(([method]) => method === "or");
+      return Promise.resolve({ data: exception ? [contacted] : [fresh], error: exception && fail ? failure : null }).then(resolve, reject);
+    };
+    return query;
+  } };
+  const data = candidateData(client);
+  const cutoff = seenHoursAgo(72);
+  const result = await data.candidates({ seenSince: cutoff, menuId: 625 });
+  assert.deepEqual(Array.from(result, (row) => row.article_id), [2, 1]);
+  assert.ok(calls[0].some(([method, column, value]) => method === "gte" && column === "last_seen_at" && value === cutoff));
+  assert.ok(calls[1].some(([method, column, value]) => method === "is" && column === "parsed_date" && value === null));
+  assert.ok(calls[1].some(([method, value]) => method === "or" && value === `and(contact_status.neq.new,last_seen_at.lt.${cutoff}),last_seen_at.is.null`));
+  for (const operations of calls) {
+    assert.ok(operations.some(([method, column, value]) => method === "eq" && column === "menu_id" && value === 625));
+    assert.ok(operations.some(([method, column, value]) => method === "eq" && column === "is_closed" && value === false));
+  }
+  calls.length = 0;
+  await data.candidates({ from: today, includeClosed: true });
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].some(([method, column, value]) => method === "gte" && column === "parsed_date" && value === today));
+  fail = true;
+  await assert.rejects(data.candidates({ seenSince: cutoff }), failure);
+});
