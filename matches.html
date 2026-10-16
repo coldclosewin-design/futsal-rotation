@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 후보 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261016e">
+  <link rel="stylesheet" href="styles.css?v=20261016f">
 </head>
 <body class="rollout-page">
   <h1>매칭 후보</h1>
@@ -32,7 +32,7 @@
     </section>
     <p id="matches-message" role="status">후보를 불러오는 중입니다…</p>
     <button id="matches-retry" class="secondary" type="button" hidden>다시 시도</button>
-    <nav class="rows" id="confirmed-home-row" aria-label="확정 매치 이동" hidden><a id="confirmed-home" class="row" href="index.html"><span class="row-main"><span class="row-label">등록 매치</span><span class="row-sub">홈에서 확정 내용을 확인하세요</span></span><span class="row-action">보기</span></a></nav>
+    <nav class="rows" id="confirmed-matches" aria-label="확정 매치" hidden><h2 class="row">확정 매치</h2></nav>
     <section id="ranked-candidates" class="candidate-list" aria-label="매칭 후보"></section>
     <section id="unparsed-section" hidden>
       <h2>미분류</h2>
@@ -58,8 +58,8 @@
       const today = () => ExicanRules.kstDate(new Date());
       const message = document.getElementById("matches-message");
       const retry = document.getElementById("matches-retry");
-      const homeLink = document.getElementById("confirmed-home");
-      const homeRow = document.getElementById("confirmed-home-row");
+      const confirmedSection = document.getElementById("confirmed-matches");
+      let scrollToConfirmed = location.hash === "#confirmed-matches";
       const menuIds = Object.keys(EXICAN_CONFIG.CAFE.MENUS).map(Number);
       const filterKey = "exican_match_filters";
       const costKey = "exican_candidate_costs";
@@ -71,7 +71,6 @@
       let member = null;
       let role = "anon";
       let knownMatches = [];
-      let latestCreated = null;
       let version = 0;
       let subscribed = false;
       let modal = null;
@@ -88,9 +87,6 @@
       let filters = api.normalizeFilters(readStorage(filterKey), menuIds);
       const storedCosts = readStorage(costKey);
       const costs = storedCosts && typeof storedCosts === "object" && !Array.isArray(storedCosts) ? storedCosts : {};
-      if (demo) {
-        homeLink.href = "index.html?demo=1";
-      }
 
       function isAdmin() { return demo ? Boolean(member?.is_president) : role === "admin"; }
       async function requireAdmin() {
@@ -117,6 +113,7 @@
         member = await ExicanMember.ensure(members);
         drafts.clear();
         showMember();
+        renderConfirmed();
         renderCards();
         return member;
       }
@@ -182,7 +179,7 @@
         namesButton.title = button.title;
       }
       function renderBoard() {
-        const defaults = api.filterCandidates(rows, api.DEFAULT_FILTERS, today());
+        const defaults = api.filterCandidates(rows, { ...api.DEFAULT_FILTERS, staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today(), new Date().toISOString());
         const now = Date.now();
         const fresh = [...defaults.ranked, ...defaults.unparsed].filter((row) => now - Date.parse(row.first_seen_at) >= 0 && now - Date.parse(row.first_seen_at) < 86400000).length;
         document.getElementById("matches-total").textContent = defaults.ranked.length;
@@ -190,6 +187,57 @@
         document.getElementById("matches-fresh-segment").classList.toggle("is-lit", fresh > 0);
         document.getElementById("matches-closed").textContent = filters.includeClosed ? "포함" : "제외";
         document.getElementById("matches-mine").textContent = `${reactions.filter((reaction) => reaction.member_id === member?.id && rows.some((row) => String(row.article_id) === String(reaction.article_id))).length}건`;
+      }
+      function renderConfirmed() {
+        const upcoming = !demo && role === "anon" ? [] : knownMatches
+          .filter((match) => match.status === "scheduled" && match.match_date >= today())
+          .sort((a, b) => `${a.match_date}${a.start_time}`.localeCompare(`${b.match_date}${b.start_time}`));
+        const heading = document.createElement("h2");
+        heading.className = "row";
+        heading.textContent = "확정 매치";
+        confirmedSection.replaceChildren(heading);
+        confirmedSection.hidden = !upcoming.length;
+        for (const match of upcoming) {
+          const row = document.createElement("article");
+          row.className = "row";
+          const main = document.createElement("div");
+          main.className = "row-main";
+          const label = document.createElement("span");
+          label.className = "row-label";
+          const sub = document.createElement("span");
+          sub.className = "row-sub";
+          const detail = api.describeMatchDetail(match);
+          label.textContent = detail.title;
+          sub.textContent = detail.sub;
+          main.append(label, sub);
+          const end = document.createElement("div");
+          end.className = "row-end";
+          if (match.candidate_article_id) {
+            const candidate = rows.find((item) => String(item.article_id) === String(match.candidate_article_id));
+            const link = document.createElement("a");
+            link.className = "row-action";
+            const url = new URL(EXICAN_CONFIG.CAFE.ARTICLE_URL(match.candidate_article_id, candidate?.menu_id));
+            if (candidate?.menu_id == null) url.searchParams.delete("menuid");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.textContent = "카페 글";
+            end.appendChild(link);
+          }
+          if (isAdmin()) {
+            const manage = document.createElement("a");
+            manage.className = "row-action secondary";
+            manage.href = demo ? "admin.html?demo=1" : "admin.html";
+            manage.textContent = "관리";
+            end.appendChild(manage);
+          }
+          row.append(main, end);
+          confirmedSection.appendChild(row);
+        }
+        if (scrollToConfirmed && !confirmedSection.hidden) {
+          scrollToConfirmed = false;
+          confirmedSection.scrollIntoView({ block: "start" });
+        }
       }
       function renderCard(row, index) {
         const card = document.createElement("article");
@@ -263,7 +311,7 @@
       }
       function renderCards() {
         renderBoard();
-        const result = api.filterCandidates(rows, filters, today());
+        const result = api.filterCandidates(rows, { ...filters, staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today(), new Date().toISOString());
         document.getElementById("candidate-count").textContent = `후보 ${result.ranked.length}건 (미분류 ${result.unparsed.length}건)`;
         const ranked = document.getElementById("ranked-candidates");
         const unparsed = document.getElementById("unparsed-candidates");
@@ -448,8 +496,7 @@
               if (!savedMatch && existing.some((item) => item.match_date === match.match_date && item.start_time.slice(0, 5) === match.start_time)) throw new Error("같은 날짜·시각에 등록된 매치가 있습니다. 날짜와 시각을 확인하세요");
               if (!savedMatch) savedMatch = await ExicanData.createMatch(match);
               knownMatches = knownMatches.filter((item) => item.id !== savedMatch.id).concat(savedMatch);
-              latestCreated = savedMatch;
-              homeRow.hidden = false;
+              renderConfirmed();
             }
             fieldset.disabled = true;
             await requireAdmin();
@@ -459,7 +506,6 @@
             state.close();
             renderCards();
             showToast("매치 등록됨");
-            homeRow.hidden = false;
           } catch (error) {
             const description = savedMatch ? `매치는 등록되었습니다. 후보 상태 저장을 다시 시도하세요: ${error.message}` : error.message;
             form.querySelector(".auth-error").textContent = description;
@@ -468,15 +514,6 @@
           } finally { saving = false; submit.disabled = false; cancel.disabled = false; }
         });
       }
-
-      homeLink.addEventListener("click", () => {
-        if (!demo || !latestCreated) return;
-        // 공용 데이터는 메모리 전용이다. 홈 이동 때 공개 요약만 한 번 전달한다.
-        const { id, match_date, start_time, end_time, venue, format, cost, status } = latestCreated;
-        try {
-          sessionStorage.setItem("exican_demo_match_handoff", JSON.stringify({ id, match_date, start_time, end_time, venue, format, cost, status }));
-        } catch (error) { showToast("브라우저 저장소를 사용할 수 없어 홈에 데모 등록 결과를 전달하지 못했습니다"); }
-      });
 
       async function loadData() {
         const request = ++version;
@@ -490,7 +527,8 @@
             ExicanData.candidates({ from: demo ? undefined : today(), includeClosed: true }),
             ExicanData.members(), ExicanData.currentPoll(), ExicanData.matches({ from: demo ? undefined : today() }),
             // from 필터는 NULL 날짜를 제외하므로 기존 API로 미분류 날짜 없는 글을 보충한다.
-            demo ? Promise.resolve([]) : ExicanData.candidates({ includeClosed: true })
+            demo ? Promise.resolve([]) : ExicanData.candidates({ includeClosed: true,
+              seenSince: new Date(Date.now() - EXICAN_CONFIG.CANDIDATE_STALE_HOURS * 3600000).toISOString() })
           ]);
           const candidates = demo ? api.shiftDemoDates(dated, today()) : [...new Map(
             dated.concat(undated.filter((row) => !row.parse_ok && !row.parsed_date)).map((row) => [row.article_id, row])).values()];
@@ -521,6 +559,7 @@
           message.hidden = true;
           showMember();
           renderCards();
+          renderConfirmed();
         } catch (error) {
           if (request !== version) return;
           message.textContent = "후보를 불러오지 못했습니다. 다시 시도해 주세요.";
@@ -541,8 +580,8 @@
               if (role === "anon") {
                 version += 1;
                 rows = []; members = []; member = null; reactions = [];
-                homeRow.hidden = true;
-                latestCreated = null;
+                knownMatches = [];
+                renderConfirmed();
                 message.hidden = false;
                 message.textContent = "팀 로그인 후 후보를 확인하세요";
                 renderCards(); showMember();

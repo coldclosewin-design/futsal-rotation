@@ -447,7 +447,7 @@ tbody th { font-weight: 600; }
 .home-actions .button.primary { background: var(--ink); color: var(--panel-solid); border-color: var(--ink); }
 .ledger-home-mine { font-weight: 700; color: var(--ink); }
 .ledger-home-mine::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--lit); box-shadow: 0 0 0 3px var(--lit-wash); vertical-align: 1px; }
-#home-match, #home-created-match, #home-member-summary { overflow-wrap: anywhere; }
+#home-match, #home-member-summary { overflow-wrap: anywhere; }
 
 /* 회칙 */
 .rules-page { display: grid; gap: 12px; }
@@ -542,7 +542,6 @@ tbody th { font-weight: 600; }
 .board-lines { margin-top: 10px; border-top: 1px solid var(--board-seam); padding-top: 10px; display: grid; gap: 4px; }
 .board-line { font-size: var(--fs-body); font-weight: 600; color: var(--board-ink); overflow-wrap: anywhere; }
 .board-line::before { content: "확정 매치"; display: block; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; color: var(--board-muted); text-transform: uppercase; }
-#home-created-match::before { content: "방금 등록"; }
 
 /* 행 목록: 라벨 왼쪽, 숫자/동작 오른쪽, 44px 행, 이음새로만 구분 */
 .rows { display: grid; border: var(--hair); border-radius: var(--r); background: rgba(255, 255, 255, 0.78); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); overflow: hidden; }
@@ -710,3 +709,10 @@ tbody th { font-weight: 600; }
 .help-page .rules-document h3 { margin-top: 20px; font-size: var(--fs-body); font-weight: 700; }
 .help-page > .page-wide { grid-column: 1 / -1; grid-row: auto; }
 .modal-help { display: block; margin-top: 12px; font-size: var(--fs-label); color: var(--ink-3); text-align: center; }
+
+/* 015: 홈 확정 매치 링크와 확정 매치 행의 관리 바로가기. */
+.board-line a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.board-link-hint { margin-left: 8px; font-size: var(--fs-label); color: var(--board-muted); }
+#confirmed-matches .row-end { display: grid; gap: 6px; justify-items: end; }
+#confirmed-matches .row-action { min-height: 0; }
+#confirmed-matches .row-action.secondary { background: var(--panel-solid); color: var(--ink); }

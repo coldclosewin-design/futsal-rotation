@@ -147,18 +147,32 @@ window.ExicanData = (() => {
     return live((client) => client.from("polls").update({ cancelled: Boolean(cancelled) }).eq("id", pollId).select().single());
   }
 
-  async function candidates({ from, to, menuId, includeClosed = false } = {}) {
+  async function candidates({ from, to, menuId, includeClosed = false, seenSince } = {}) {
     if (mode() === "demo") return copy((await demoData()).match_candidates.filter((row) =>
       (!from || row.parsed_date >= from) && (!to || row.parsed_date <= to) &&
+      (!seenSince || !row.last_seen_at || !Number.isFinite(Date.parse(row.last_seen_at)) ||
+        row.contact_status !== "new" || Date.parse(row.last_seen_at) >= Date.parse(seenSince)) &&
       (menuId === undefined || String(row.menu_id) === String(menuId)) && (includeClosed || !row.is_closed))
       .sort((a, b) => b.scraper_score - a.scraper_score));
-    return live((client) => {
+    return live(async (client) => {
       let query = client.from("match_candidates").select("*").order("scraper_score", { ascending: false });
       if (from) query = query.gte("parsed_date", from);
       if (to) query = query.lte("parsed_date", to);
+      if (seenSince) query = query.gte("last_seen_at", seenSince);
       if (menuId !== undefined) query = query.eq("menu_id", menuId);
       if (!includeClosed) query = query.eq("is_closed", false);
-      return query;
+      if (!seenSince) return query;
+      // 미분류 보충 조회에서도 연락한 글·수집 시각 없는 글의 만료 예외를 보존한다.
+      let exceptions = client.from("match_candidates").select("*").is("parsed_date", null)
+        .or(`and(contact_status.neq.new,last_seen_at.lt.${seenSince}),last_seen_at.is.null`);
+      if (from) exceptions = exceptions.gte("parsed_date", from);
+      if (to) exceptions = exceptions.lte("parsed_date", to);
+      if (menuId !== undefined) exceptions = exceptions.eq("menu_id", menuId);
+      if (!includeClosed) exceptions = exceptions.eq("is_closed", false);
+      const [recent, retained] = await Promise.all([query, exceptions]);
+      if (recent.error || retained.error) return { data: null, error: recent.error || retained.error };
+      return { data: [...new Map(recent.data.concat(retained.data).map((row) => [row.article_id, row])).values()]
+        .sort((a, b) => b.scraper_score - a.scraper_score), error: null };
     });
   }
 
