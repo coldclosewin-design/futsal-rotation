@@ -178,9 +178,16 @@ window.ExicanData = (() => {
       return index < 0;
     }
     const existing = (await reactions([articleId])).some((item) => item.member_id === memberId);
-    await live((client) => existing ? client.from("candidate_reactions").delete().eq("article_id", articleId).eq("member_id", memberId) :
-      client.from("candidate_reactions").upsert(row, { onConflict: "article_id,member_id" }));
-    return !existing;
+    if (existing) {
+      await live((client) => client.from("candidate_reactions").delete().eq("article_id", articleId).eq("member_id", memberId));
+      return false;
+    }
+    // upsert(ON CONFLICT DO UPDATE)는 테이블 UPDATE 권한을 요구하는데 팀 계정에는 insert/delete만 있다. 단순 insert로 저장한다.
+    try { await live((client) => client.from("candidate_reactions").insert(row)); }
+    catch (error) {
+      if (error.code !== "23505") throw error; // 다른 기기에서 이미 추천한 경우는 성공으로 본다.
+    }
+    return true;
   }
 
   async function updateCandidate(articleId, patch) {
