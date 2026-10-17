@@ -716,3 +716,6 @@ tbody th { font-weight: 600; }
 #confirmed-matches .row-end { display: grid; gap: 6px; justify-items: end; }
 #confirmed-matches .row-action { min-height: 0; }
 #confirmed-matches .row-action.secondary { background: var(--panel-solid); color: var(--ink); }
+
+/* 016: 지난 경기의 승리 결과만 점등한다. */
+#match-history .chip[data-result="win"] { border-color: var(--lit); color: var(--lit-ink); background: var(--lit-wash); }

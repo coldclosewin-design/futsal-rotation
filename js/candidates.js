@@ -91,6 +91,18 @@
     };
   }
 
+  function describeHistory(row, labels = {}) {
+    const date = describeSchedule({ parsed_date: row.match_date }).replace(" 시간 미정", "");
+    const hasScore = Number.isFinite(row.score_us) && Number.isFinite(row.score_them);
+    const result = hasScore && row.status === "played" ?
+      (row.score_us > row.score_them ? "win" : row.score_us === row.score_them ? "draw" : "loss") : "none";
+    return {
+      title: `${date} · ${row.venue || "구장 미정"}${hasScore ? ` · ${row.score_us}:${row.score_them}` : ""}`,
+      sub: `${row.opponent ? "상대 " + row.opponent : "상대 미정"} · ${row.format || "포맷 미정"} · 참석 ${Number.isFinite(row.attendance_count) ? row.attendance_count : "—"}명 · ${labels[row.status] || row.status}`,
+      result
+    };
+  }
+
   function buildCandidatePatch(fields, nowIso) {
     const priority = fields.our_priority === "" || fields.our_priority == null ? null : Number(fields.our_priority);
     if (priority !== null && ![1, 2, 3].includes(priority)) throw new Error("우선순위는 1~3 중 선택하세요");
@@ -118,7 +130,7 @@
   }
 
   const api = { DEFAULT_FILTERS, STATUS_LABELS, normalizeFilters, filterCandidates, describeSchedule, nextStatus,
-    shiftDemoDates, describeMatch, describeMatchDetail, buildCandidatePatch, buildMatchRow };
+    shiftDemoDates, describeMatch, describeMatchDetail, describeHistory, buildCandidatePatch, buildMatchRow };
   if (typeof window !== "undefined") window.ExicanCandidates = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })();

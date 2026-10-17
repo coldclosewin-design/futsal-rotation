@@ -10,6 +10,50 @@ const today = "2026-10-15";
 const rows = api.shiftDemoDates(fixture.match_candidates, today);
 const base = rows.find((row) => row.article_id === 2589474);
 
+const historyMatch = { match_date: "2026-10-10", start_time: "08:00", venue: "도봉풋살장",
+  opponent: "테스트 FC", format: "6v6", status: "played", score_us: 4, score_them: 3, attendance_count: 7 };
+const historyLabels = { played: "경기 완료", cancelled: "취소", fallback_plab: "플랩 전환" };
+
+test("지난 경기: 4:3 완료는 스코어·참석 수·승리를 표시하고 우리 기준으로 승패를 판단한다", () => {
+  const row = { ...historyMatch };
+  assert.deepEqual(api.describeHistory(row, historyLabels), {
+    title: "10/10(토) · 도봉풋살장 · 4:3",
+    sub: "상대 테스트 FC · 6v6 · 참석 7명 · 경기 완료", result: "win"
+  });
+  assert.equal(api.describeHistory({ ...row, score_us: 2 }, historyLabels).result, "loss");
+  assert.deepEqual(row, historyMatch);
+});
+
+test("지난 경기: 2:2 완료는 무승부이고 0:0도 유효한 스코어다", () => {
+  const detail = api.describeHistory({ ...historyMatch, score_us: 2, score_them: 2 }, historyLabels);
+  assert.equal(detail.title, "10/10(토) · 도봉풋살장 · 2:2");
+  assert.equal(detail.result, "draw");
+  assert.equal(api.describeHistory({ ...historyMatch, score_us: 0, score_them: 0 }).result, "draw");
+});
+
+test("지난 경기: 스코어 없는 취소는 none과 취소 라벨이며 미완료 스코어는 승패가 없다", () => {
+  const row = { ...historyMatch, status: "cancelled", score_us: null, score_them: null };
+  assert.deepEqual(api.describeHistory(row, historyLabels), {
+    title: "10/10(토) · 도봉풋살장",
+    sub: "상대 테스트 FC · 6v6 · 참석 7명 · 취소", result: "none"
+  });
+  assert.equal(api.describeHistory({ ...historyMatch, status: "fallback_plab" }, historyLabels).result, "none");
+  for (const score_us of [null, undefined, "4", NaN, Infinity]) {
+    const detail = api.describeHistory({ ...historyMatch, score_us }, historyLabels);
+    assert.equal(detail.result, "none");
+    assert.equal(detail.title, "10/10(토) · 도봉풋살장");
+  }
+});
+
+test("지난 경기: 참석 수가 없으면 참석 —명, 누락 필드와 상태 라벨 맵의 폴백을 표시한다", () => {
+  for (const attendance_count of [undefined, null, "7", NaN]) {
+    const detail = api.describeHistory({ ...historyMatch, venue: null, opponent: null, format: null, attendance_count });
+    assert.equal(detail.title, "10/10(토) · 구장 미정 · 4:3");
+    assert.equal(detail.sub, "상대 미정 · 포맷 미정 · 참석 —명 · played");
+  }
+  assert.match(api.describeHistory({ ...historyMatch, attendance_count: 0 }, historyLabels).sub, /참석 0명/);
+});
+
 test("Node와 브라우저에서 DOM 없이 동일한 후보 API를 제공한다", () => {
   const context = { window: {} };
   runInNewContext(readFileSync(join(__dirname, "../js/candidates.js"), "utf8"), context);
