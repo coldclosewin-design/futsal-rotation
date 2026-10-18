@@ -192,7 +192,7 @@
       }
 
       function previewRows(rows, title, noun) {
-        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="${noun === "벌금" ? "btn-destructive" : "primary"}" ${rows.length ? "" : "disabled"}>확인 · 기록</button></form>`, () => write(async () => {
+        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="${noun === "벌금" ? "btn-destructive" : "primary"}" ${rows.length ? "" : "disabled"}>확인 · 기록</button></form>`, () => write(async () => {
           let count = 0, duplicate = 0;
           for (const row of rows) {
             try { await data.addLedger(row); count += 1; }
