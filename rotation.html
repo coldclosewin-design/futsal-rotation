@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018a">
+  <link rel="stylesheet" href="styles.css?v=20261018b">
 </head>
 <body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
@@ -65,7 +65,7 @@
     </div>
   </div>
 
-  <nav class="rows page-wide" aria-label="멤버 관리 이동"><a id="rotation-admin-link" class="row" href="admin.html"><span class="row-label">멤버 관리</span><span class="row-action">관리 화면</span></a></nav>
+  <nav class="rows page-wide" aria-label="멤버 관리 이동"><a id="rotation-admin-link" class="row" href="admin.html?tab=members"><span class="row-label">멤버 관리</span><span class="row-action">관리 화면</span></a></nav>
   </main>
 
   <div class="toast" id="toast"></div>
@@ -86,7 +86,7 @@
     const integration = { connected: false, admin: false, members: [], poll: null, matches: [], result: null, saving: false };
     const demo = ExicanData.mode() === "demo";
     const explicitDemo = new URLSearchParams(location.search).get("demo") === "1";
-    if (demo) document.getElementById("rotation-admin-link").search = "?demo=1";
+    if (demo) document.getElementById("rotation-admin-link").search = "?tab=members&demo=1";
     document.getElementById("shuffleBtn").innerHTML = `${icon("shuffle", 18)} 다시 섞기`;
     document.getElementById("copyBtn").innerHTML = `${icon("copy", 18)} 카톡에 복사`;
     function updateRotationBoard() {

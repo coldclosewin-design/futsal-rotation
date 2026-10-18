@@ -724,3 +724,11 @@ tbody th { font-weight: 600; }
 .board-line[data-label]::before { content: attr(data-label); }
 .board-line .board-sub { display: block; margin-top: 2px; font-size: var(--fs-label); font-weight: 500; color: var(--board-muted); }
 .rollout-page .home-actions .btn-destructive { grid-column: auto; margin-top: 0; }
+
+/* 018: 투표 현황 색 구분, 보드 날짜 확대와 큰 숫자 라벨. */
+.vote-member-list li[data-choice="attend"] { background: var(--lit-wash); border-color: var(--lit); color: var(--lit-ink); }
+.vote-member-list li[data-choice="absent"] { background: transparent; border-style: dashed; color: var(--ink-4); }
+.vote-member-list li[data-choice="absent"] time { color: var(--ink-4); }
+.home-board .board-title, .vote-page .board-title { font-size: clamp(22px, 6vw, 28px); letter-spacing: -0.02em; line-height: 1.15; }
+.board-count { display: flex; align-items: baseline; gap: 6px; margin: 0; }
+.board-count small { font-size: var(--fs-label); font-weight: 600; color: var(--board-muted); letter-spacing: 0; white-space: nowrap; }

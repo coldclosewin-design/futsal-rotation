@@ -8,6 +8,8 @@ const form = require("../js/poll-form.js");
 const fixture = require("./fixtures/demo-data.json");
 const source = readFileSync(join(__dirname, "../js/data.js"), "utf8");
 const now = "2026-10-15T12:00:00+09:00";
+// vm 컨텍스트에서 만든 객체는 prototype이 달라 deepEqual이 실패하므로 JSON 왕복으로 비교한다.
+const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function environment({ clock = now, live = false, role = "admin", respond = () => ({ data: [] }) } = {}) {
   const calls = [];
@@ -96,32 +98,48 @@ test("데모 생성은 취소된 같은 날짜 투표를 새 옵션으로 되살
   await assert.rejects(() => data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
 });
 
-test("데모 삭제는 투표와 기록을 지우고, 매치·벌금이 연결된 투표는 거부한다", async () => {
+test("데모 삭제는 투표·투표 기록·벌금을 지우고 매치 연결을 풀며, 정산된 벌금이 있으면 거부한다", async () => {
   const { data } = environment();
-  const special = (await data.upcomingPolls(now)).find((row) => row.id === "demo-poll-special");
-  assert.equal((await data.votes(special.id)).length, 3);
-  const removed = await data.deletePoll(special.id);
-  assert.equal(removed.id, special.id);
-  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === special.id), false);
-  assert.equal((await data.votes(special.id)).length, 0);
-  await assert.rejects(() => data.deletePoll(special.id), /투표를 찾을 수 없습니다/);
-  // demo-poll-1은 확정 매치(matches.poll_id)와 벌금(ledger.ref_poll_id)이 참조한다.
-  await assert.rejects(() => data.deletePoll("demo-poll-1"), /연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다/);
-  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === "demo-poll-1"), true);
+  assert.deepEqual(plain(await data.pollReferences("demo-poll-1")), { votes: 7, fines: 1, matches: 1 });
+  assert.deepEqual(plain(await data.pollReferences("demo-poll-special")), { votes: 3, fines: 0, matches: 0 });
+  const removed = await data.deletePoll("demo-poll-1");
+  assert.equal(removed.id, "demo-poll-1");
+  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === "demo-poll-1"), false);
+  assert.equal((await data.votes("demo-poll-1")).length, 0);
+  assert.equal((await data.ledger()).some((row) => row.ref_poll_id === "demo-poll-1"), false);
+  const match = (await data.matches()).find((row) => row.id === "demo-match-1");
+  assert.equal(match.poll_id, null);
+  await assert.rejects(() => data.deletePoll("demo-poll-1"), /투표를 찾을 수 없습니다/);
+  const paid = environment();
+  const ledger = await paid.data.ledger();
+  // 정산된 벌금: 데모 메모리의 행을 직접 바꾼다(ledger()는 복사본을 주므로 member 페이지 방식으로 접근).
+  const fixtureRow = ledger.find((row) => row.ref_poll_id === "demo-poll-1");
+  assert.ok(fixtureRow && fixtureRow.settled === false);
   const team = environment({ role: "team", live: true });
   await assert.rejects(() => team.data.deletePoll("demo-poll-special"), /회장 로그인/);
 });
 
-test("live 삭제는 id로 delete하고 참조 제한(23503)은 취소 안내로 바꾼다", async () => {
-  const { data, calls } = environment({ live: true, respond: () => ({ data: { id: 7, match_date: "2026-10-24" } }) });
-  assert.deepEqual(await data.deletePoll(7), { id: 7, match_date: "2026-10-24" });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].table, "polls");
-  assert.deepEqual(calls[0].operations, [["delete"], ["eq", "id", 7], ["select"], ["single"]]);
-  const referenced = environment({ live: true, respond: () => ({ error: { code: "23503", message: "violates foreign key" } }) });
-  await assert.rejects(() => referenced.data.deletePoll(7), /연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요/);
-  const other = environment({ live: true, respond: () => ({ error: { code: "42501", message: "permission denied" } }) });
-  await assert.rejects(() => other.data.deletePoll(7), (error) => error.code === "42501");
+test("live 삭제는 벌금 조회→벌금 삭제→매치 연결 해제→투표 삭제 순서이고, 정산된 벌금이면 조회만 하고 거부한다", async () => {
+  const respond = (fines) => (call) => {
+    const op = (name) => call.operations.find(([key]) => key === name);
+    if (call.table === "ledger" && op("select")) return { data: fines };
+    if (call.table === "polls" && op("delete")) return { data: { id: 7, match_date: "2026-10-24" } };
+    return { data: null };
+  };
+  const { data, calls } = environment({ live: true, respond: respond([{ id: 1, settled: false }]) });
+  assert.deepEqual(plain(await data.deletePoll(7)), { id: 7, match_date: "2026-10-24" });
+  assert.deepEqual(calls.map((call) => [call.table, call.operations[0][0]]), [["ledger", "select"], ["ledger", "delete"], ["matches", "update"], ["polls", "delete"]]);
+  assert.deepEqual(calls[1].operations, [["delete"], ["eq", "ref_poll_id", 7]]);
+  assert.deepEqual([calls[2].operations[0][0], { ...calls[2].operations[0][1] }, calls[2].operations[1]], ["update", { poll_id: null }, ["eq", "poll_id", 7]]);
+  assert.deepEqual(calls[3].operations, [["delete"], ["eq", "id", 7], ["select"], ["single"]]);
+  const none = environment({ live: true, respond: respond([]) });
+  await none.data.deletePoll(7);
+  assert.deepEqual(none.calls.map((call) => [call.table, call.operations[0][0]]), [["ledger", "select"], ["matches", "update"], ["polls", "delete"]]);
+  const paid = environment({ live: true, respond: respond([{ id: 1, settled: true }]) });
+  await assert.rejects(() => paid.data.deletePoll(7), /정산 처리된 벌금이 연결된 투표는 삭제할 수 없습니다/);
+  assert.equal(paid.calls.length, 1);
+  const refs = environment({ live: true, respond: (call) => ({ data: call.table === "poll_votes" ? [{}, {}] : call.table === "ledger" ? [{}] : [] }) });
+  assert.deepEqual(plain(await refs.data.pollReferences(7)), { votes: 2, fines: 1, matches: 0 });
 });
 
 test("live 다가오는 투표는 KST 경계·취소 제외·날짜순으로 1,000행 다음 페이지까지 조회한다", async () => {

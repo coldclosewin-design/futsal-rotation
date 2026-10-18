@@ -143,17 +143,27 @@
     return copy(row);
   }
 
+  async function pollReferences(id) {
+    if (api.mode() !== "demo") return original.pollReferences(id);
+    const data = await demoData();
+    return { votes: data.poll_votes.filter((row) => row.poll_id === id).length,
+      fines: data.ledger.filter((row) => row.ref_poll_id === id).length,
+      matches: data.matches.filter((row) => row.poll_id === id).length };
+  }
+
   async function deletePoll(id) {
     await requireAdmin();
     if (api.mode() !== "demo") return original.deletePoll(id);
     const data = await demoData();
     const index = data.polls.findIndex((poll) => poll.id === id);
     if (index < 0) throw new Error("투표를 찾을 수 없습니다");
-    if (data.matches.some((row) => row.poll_id === id) || data.ledger.some((row) => row.ref_poll_id === id)) {
-      throw new Error("연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
+    if (data.ledger.some((row) => row.ref_poll_id === id && row.settled)) {
+      throw new Error("정산 처리된 벌금이 연결된 투표는 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
     }
     const [poll] = data.polls.splice(index, 1);
     data.poll_votes = data.poll_votes.filter((vote) => vote.poll_id !== id);
+    data.ledger = data.ledger.filter((row) => row.ref_poll_id !== id);
+    for (const match of data.matches) if (match.poll_id === id) match.poll_id = null;
     return copy(poll);
   }
 
@@ -261,7 +271,7 @@
     return original.addLedger(row);
   }
 
-  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, deletePoll, votesByPolls,
+  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, deletePoll, pollReferences, votesByPolls,
     votes: (id) => votesByPolls([id]), matches, updateMatch, attendance,
     saveAttendance: (id, rows) => saveRows("match_attendance", id, rows), rotationHistory,
     saveRotationHistory: (id, rows) => saveRows("rotation_history", id, rows), matchHistory };

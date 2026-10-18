@@ -122,7 +122,21 @@
     };
   }
 
-  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine };
+  // 투표 삭제 확인 문구. 함께 지워지는 투표·벌금 기록 수와 연결만 풀리는 매치 수.
+  function deleteSummary({ votes = 0, fines = 0, matches = 0 } = {}) {
+    const parts = [`투표 기록 ${votes}건`];
+    if (fines) parts.push(`벌금 기록 ${fines}건`);
+    let text = `${parts.join("과 ")}이 함께 삭제되고 되돌릴 수 없습니다.`;
+    if (matches) text += ` 연결된 매치 ${matches}건은 그대로 두고 투표 연결만 풉니다.`;
+    return text;
+  }
+
+  // 마감(또는 경기)까지 남은 날짜 수. 같은 KST 날짜면 0.
+  function daysUntil(targetIso, nowIso) {
+    return Math.round((Date.parse(`${kstDate(targetIso)}T00:00:00Z`) - Date.parse(`${kstDate(nowIso)}T00:00:00Z`)) / DAY);
+  }
+
+  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine, deleteSummary, daysUntil };
   if (typeof window !== "undefined") window.ExicanRules = rules;
   if (typeof module !== "undefined" && module.exports) module.exports = rules;
 })();

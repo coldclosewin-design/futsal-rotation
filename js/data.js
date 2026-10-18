@@ -158,24 +158,46 @@ window.ExicanData = (() => {
     return live((client) => client.from("polls").update({ cancelled: Boolean(cancelled) }).eq("id", pollId).select().single());
   }
 
-  // 투표 삭제. 투표 기록(poll_votes)은 DB가 함께 지우고, 연결된 매치·벌금 기록이 있으면 참조 제한(23503)으로 거부된다.
+  // 투표가 참조되는 기록 수. 삭제 확인 창에 보여 준다.
+  async function pollReferences(pollId) {
+    if (mode() === "demo") {
+      const data = await demoData();
+      return { votes: data.poll_votes.filter((row) => row.poll_id === pollId).length,
+        fines: data.ledger.filter((row) => row.ref_poll_id === pollId).length,
+        matches: data.matches.filter((row) => row.poll_id === pollId).length };
+    }
+    const [votes, fines, matches] = await Promise.all([
+      live((client) => client.from("poll_votes").select("member_id").eq("poll_id", pollId)),
+      live((client) => client.from("ledger").select("id").eq("ref_poll_id", pollId)),
+      live((client) => client.from("matches").select("id").eq("poll_id", pollId))
+    ]);
+    return { votes: votes.length, fines: fines.length, matches: matches.length };
+  }
+
+  // 투표 삭제. 투표 기록은 DB가 함께 지우고, 연결된 벌금 기록은 지우며 매치는 투표 연결만 푼 뒤 투표 행을 지운다.
+  // 정산(입금 처리)된 벌금이 연결돼 있으면 장부가 어긋나므로 거부한다.
   async function deletePoll(pollId) {
     await requireAdmin();
     if (mode() === "demo") {
       const data = await demoData();
       const index = data.polls.findIndex((item) => item.id === pollId);
       if (index < 0) throw new Error("투표를 찾을 수 없습니다");
-      if (data.matches.some((row) => row.poll_id === pollId) || data.ledger.some((row) => row.ref_poll_id === pollId)) throw pollInUse();
+      if (data.ledger.some((row) => row.ref_poll_id === pollId && row.settled)) throw settledFines();
       const [poll] = data.polls.splice(index, 1);
       data.poll_votes = data.poll_votes.filter((vote) => vote.poll_id !== pollId);
+      data.ledger = data.ledger.filter((row) => row.ref_poll_id !== pollId);
+      for (const match of data.matches) if (match.poll_id === pollId) match.poll_id = null;
       return copy(poll);
     }
-    try { return await live((client) => client.from("polls").delete().eq("id", pollId).select().single()); }
-    catch (error) { throw error.code === "23503" ? pollInUse() : error; }
+    const fines = await live((client) => client.from("ledger").select("id,settled").eq("ref_poll_id", pollId));
+    if (fines.some((row) => row.settled)) throw settledFines();
+    if (fines.length) await live((client) => client.from("ledger").delete().eq("ref_poll_id", pollId));
+    await live((client) => client.from("matches").update({ poll_id: null }).eq("poll_id", pollId));
+    return live((client) => client.from("polls").delete().eq("id", pollId).select().single());
   }
 
-  function pollInUse() {
-    return new Error("연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
+  function settledFines() {
+    return new Error("정산 처리된 벌금이 연결된 투표는 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
   }
 
   async function candidates({ from, to, menuId, includeClosed = false, seenSince } = {}) {
@@ -282,7 +304,7 @@ window.ExicanData = (() => {
     });
   }
 
-  const api = { members, upcomingPolls, currentPoll, votes, castVote, createPoll, setPollCancelled, deletePoll, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
+  const api = { members, upcomingPolls, currentPoll, votes, castVote, createPoll, setPollCancelled, deletePoll, pollReferences, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
   return { mode, ...Object.fromEntries(Object.entries(api).map(([name, method]) => [name, async (...args) => {
     try { return await method(...args); }
     catch (error) { showToast(error.message || "데이터 요청에 실패했습니다"); throw error; }

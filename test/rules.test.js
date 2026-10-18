@@ -130,6 +130,21 @@ test("pollMatchLine은 확정 매치의 시간·구장·상대를, 없으면 날
   assert.equal(rules.pollMatchLine(poll, { match_date: "2026-10-24" }).title, "10월 24일 토요일 시간 미정 · 구장 미정");
 });
 
+test("deleteSummary는 함께 지워지는 기록 수와 연결만 풀리는 매치 수를 문장으로 만든다", () => {
+  assert.equal(rules.deleteSummary({ votes: 7 }), "투표 기록 7건이 함께 삭제되고 되돌릴 수 없습니다.");
+  assert.equal(rules.deleteSummary({ votes: 7, fines: 2, matches: 1 }),
+    "투표 기록 7건과 벌금 기록 2건이 함께 삭제되고 되돌릴 수 없습니다. 연결된 매치 1건은 그대로 두고 투표 연결만 풉니다.");
+  assert.equal(rules.deleteSummary(), "투표 기록 0건이 함께 삭제되고 되돌릴 수 없습니다.");
+});
+
+test("daysUntil은 KST 날짜 기준으로 남은 날을 세고 같은 날이면 0이다", () => {
+  assert.equal(rules.daysUntil("2026-10-19T13:00:00+09:00", "2026-10-18T22:30:00+09:00"), 1);
+  assert.equal(rules.daysUntil("2026-10-19T13:00:00+09:00", "2026-10-19T03:00:00+09:00"), 0);
+  // UTC로는 10/18 15:30이지만 KST로는 10/19 00:30 → 같은 날.
+  assert.equal(rules.daysUntil("2026-10-19T13:00:00+09:00", "2026-10-18T15:30:00Z"), 0);
+  assert.equal(rules.daysUntil("2026-10-24T00:00:00+09:00", "2026-10-18T12:00:00+09:00"), 6);
+});
+
 test("특별 투표는 제목 또는 토요일 이외 날짜로 구분하고 벌금 설정과는 독립이다", () => {
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", fines: false }), false);
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", title: "이벤트" }), false);

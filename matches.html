@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018a">
+  <link rel="stylesheet" href="styles.css?v=20261018b">
 </head>
 <body class="rollout-page">
   <h1>매칭</h1>
@@ -233,7 +233,7 @@
           if (isAdmin()) {
             const manage = document.createElement("a");
             manage.className = "row-action secondary";
-            manage.href = demo ? "admin.html?demo=1" : "admin.html";
+            manage.href = demo ? "admin.html?tab=matches&demo=1" : "admin.html?tab=matches";
             manage.textContent = "관리";
             end.appendChild(manage);
           }
