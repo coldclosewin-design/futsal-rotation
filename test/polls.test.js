@@ -23,7 +23,7 @@ function environment({ clock = now, live = false, role = "admin", respond = () =
       const call = { table, operations: [] };
       calls.push(call);
       const query = { then: (resolve, reject) => Promise.resolve(respond(call)).then(resolve, reject) };
-      for (const name of ["select", "gte", "eq", "order", "range", "insert", "update", "single"]) {
+      for (const name of ["select", "gte", "eq", "order", "range", "insert", "update", "delete", "single"]) {
         query[name] = (...args) => { call.operations.push([name, ...args]); return query; };
       }
       return query;
@@ -94,6 +94,34 @@ test("데모 생성은 취소된 같은 날짜 투표를 새 옵션으로 되살
   assert.equal(listed.length, 1);
   assert.equal(listed[0].title, "다시 여는 수요일");
   await assert.rejects(() => data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
+});
+
+test("데모 삭제는 투표와 기록을 지우고, 매치·벌금이 연결된 투표는 거부한다", async () => {
+  const { data } = environment();
+  const special = (await data.upcomingPolls(now)).find((row) => row.id === "demo-poll-special");
+  assert.equal((await data.votes(special.id)).length, 3);
+  const removed = await data.deletePoll(special.id);
+  assert.equal(removed.id, special.id);
+  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === special.id), false);
+  assert.equal((await data.votes(special.id)).length, 0);
+  await assert.rejects(() => data.deletePoll(special.id), /투표를 찾을 수 없습니다/);
+  // demo-poll-1은 확정 매치(matches.poll_id)와 벌금(ledger.ref_poll_id)이 참조한다.
+  await assert.rejects(() => data.deletePoll("demo-poll-1"), /연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다/);
+  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === "demo-poll-1"), true);
+  const team = environment({ role: "team", live: true });
+  await assert.rejects(() => team.data.deletePoll("demo-poll-special"), /회장 로그인/);
+});
+
+test("live 삭제는 id로 delete하고 참조 제한(23503)은 취소 안내로 바꾼다", async () => {
+  const { data, calls } = environment({ live: true, respond: () => ({ data: { id: 7, match_date: "2026-10-24" } }) });
+  assert.deepEqual(await data.deletePoll(7), { id: 7, match_date: "2026-10-24" });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].table, "polls");
+  assert.deepEqual(calls[0].operations, [["delete"], ["eq", "id", 7], ["select"], ["single"]]);
+  const referenced = environment({ live: true, respond: () => ({ error: { code: "23503", message: "violates foreign key" } }) });
+  await assert.rejects(() => referenced.data.deletePoll(7), /연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요/);
+  const other = environment({ live: true, respond: () => ({ error: { code: "42501", message: "permission denied" } }) });
+  await assert.rejects(() => other.data.deletePoll(7), (error) => error.code === "42501");
 });
 
 test("live 다가오는 투표는 KST 경계·취소 제외·날짜순으로 1,000행 다음 페이지까지 조회한다", async () => {

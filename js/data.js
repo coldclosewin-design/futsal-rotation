@@ -158,6 +158,26 @@ window.ExicanData = (() => {
     return live((client) => client.from("polls").update({ cancelled: Boolean(cancelled) }).eq("id", pollId).select().single());
   }
 
+  // 투표 삭제. 투표 기록(poll_votes)은 DB가 함께 지우고, 연결된 매치·벌금 기록이 있으면 참조 제한(23503)으로 거부된다.
+  async function deletePoll(pollId) {
+    await requireAdmin();
+    if (mode() === "demo") {
+      const data = await demoData();
+      const index = data.polls.findIndex((item) => item.id === pollId);
+      if (index < 0) throw new Error("투표를 찾을 수 없습니다");
+      if (data.matches.some((row) => row.poll_id === pollId) || data.ledger.some((row) => row.ref_poll_id === pollId)) throw pollInUse();
+      const [poll] = data.polls.splice(index, 1);
+      data.poll_votes = data.poll_votes.filter((vote) => vote.poll_id !== pollId);
+      return copy(poll);
+    }
+    try { return await live((client) => client.from("polls").delete().eq("id", pollId).select().single()); }
+    catch (error) { throw error.code === "23503" ? pollInUse() : error; }
+  }
+
+  function pollInUse() {
+    return new Error("연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
+  }
+
   async function candidates({ from, to, menuId, includeClosed = false, seenSince } = {}) {
     if (mode() === "demo") return copy((await demoData()).match_candidates.filter((row) =>
       (!from || row.parsed_date >= from) && (!to || row.parsed_date <= to) &&
@@ -262,7 +282,7 @@ window.ExicanData = (() => {
     });
   }
 
-  const api = { members, upcomingPolls, currentPoll, votes, castVote, createPoll, setPollCancelled, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
+  const api = { members, upcomingPolls, currentPoll, votes, castVote, createPoll, setPollCancelled, deletePoll, candidates, reactions, toggleReaction, updateCandidate, createMatch, matches, ledger };
   return { mode, ...Object.fromEntries(Object.entries(api).map(([name, method]) => [name, async (...args) => {
     try { return await method(...args); }
     catch (error) { showToast(error.message || "데이터 요청에 실패했습니다"); throw error; }

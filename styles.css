@@ -719,3 +719,8 @@ tbody th { font-weight: 600; }
 
 /* 016: 지난 경기의 승리 결과만 점등한다. */
 #match-history .chip[data-result="win"] { border-color: var(--lit); color: var(--lit-ink); background: var(--lit-wash); }
+
+/* 017: 투표 보드 "경기 일시" 줄(라벨은 data-label), 회장 도구의 취소·삭제 버튼 짝. */
+.board-line[data-label]::before { content: attr(data-label); }
+.board-line .board-sub { display: block; margin-top: 2px; font-size: var(--fs-label); font-weight: 500; color: var(--board-muted); }
+.rollout-page .home-actions .btn-destructive { grid-column: auto; margin-top: 0; }

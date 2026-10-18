@@ -143,6 +143,20 @@
     return copy(row);
   }
 
+  async function deletePoll(id) {
+    await requireAdmin();
+    if (api.mode() !== "demo") return original.deletePoll(id);
+    const data = await demoData();
+    const index = data.polls.findIndex((poll) => poll.id === id);
+    if (index < 0) throw new Error("투표를 찾을 수 없습니다");
+    if (data.matches.some((row) => row.poll_id === id) || data.ledger.some((row) => row.ref_poll_id === id)) {
+      throw new Error("연결된 매치나 벌금 기록이 있어 삭제할 수 없습니다. 대신 투표 취소를 쓰세요");
+    }
+    const [poll] = data.polls.splice(index, 1);
+    data.poll_votes = data.poll_votes.filter((vote) => vote.poll_id !== id);
+    return copy(poll);
+  }
+
   async function votesByPolls(ids) {
     if (!ids.length) return [];
     if (api.mode() === "demo") return copy((await demoData()).poll_votes.filter((row) => ids.includes(row.poll_id)));
@@ -247,7 +261,7 @@
     return original.addLedger(row);
   }
 
-  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, votesByPolls,
+  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, deletePoll, votesByPolls,
     votes: (id) => votesByPolls([id]), matches, updateMatch, attendance,
     saveAttendance: (id, rows) => saveRows("match_attendance", id, rows), rotationHistory,
     saveRotationHistory: (id, rows) => saveRows("rotation_history", id, rows), matchHistory };

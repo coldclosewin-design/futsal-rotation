@@ -104,6 +104,32 @@ test("pollTitle은 제목을 보존하고 없으면 실제 요일을 계산한�
   assert.equal(rules.pollTitle({ match_date: "2027-01-01", title: "" }), "1/1(금) 경기");
 });
 
+test("longDate는 월·일·요일을 풀어 쓴다", () => {
+  assert.equal(rules.longDate("2026-10-24"), "10월 24일 토요일");
+  assert.equal(rules.longDate("2027-01-01"), "1월 1일 금요일");
+});
+
+test("matchForPoll은 투표 id 연결을 우선하고 없으면 같은 날짜의 예정 매치를 고른다", () => {
+  const weekly = { id: "p1", match_date: "2026-10-24" };
+  const linked = { id: "m1", poll_id: "p1", match_date: "2026-10-25", status: "scheduled" };
+  const sameDay = { id: "m2", poll_id: null, match_date: "2026-10-24", status: "scheduled" };
+  const cancelled = { id: "m3", poll_id: "p1", match_date: "2026-10-24", status: "cancelled" };
+  assert.equal(rules.matchForPoll(weekly, [sameDay, linked, cancelled]), linked);
+  assert.equal(rules.matchForPoll(weekly, [cancelled, sameDay]), sameDay);
+  assert.equal(rules.matchForPoll(weekly, [cancelled]), null);
+  assert.equal(rules.matchForPoll(weekly, undefined), null);
+});
+
+test("pollMatchLine은 확정 매치의 시간·구장·상대를, 없으면 날짜와 미확정을 보여 준다", () => {
+  const poll = { id: "p1", match_date: "2026-10-24" };
+  assert.deepEqual(rules.pollMatchLine(poll, null), { confirmed: false, title: "10월 24일 토요일 · 매치 미확정", sub: "매칭 탭에서 상대팀을 찾는 중입니다" });
+  const match = { match_date: "2026-10-24", start_time: "08:00:00", end_time: "10:00:00", venue: "도봉풋살장", opponent: "FC 데모", format: "6v6", cost: 60000, memo: "주차 무료" };
+  assert.deepEqual(rules.pollMatchLine(poll, match), { confirmed: true, title: "10월 24일 토요일 08:00~10:00 · 도봉풋살장", sub: "상대 FC 데모 · 6v6 · 구장비 60,000원 · 주차 무료" });
+  assert.deepEqual(rules.pollMatchLine(poll, { match_date: "2026-10-24", start_time: "08:00:00" }),
+    { confirmed: true, title: "10월 24일 토요일 08:00 · 구장 미정", sub: "상대 미정 · 포맷 미정 · 구장비 0원" });
+  assert.equal(rules.pollMatchLine(poll, { match_date: "2026-10-24" }).title, "10월 24일 토요일 시간 미정 · 구장 미정");
+});
+
 test("특별 투표는 제목 또는 토요일 이외 날짜로 구분하고 벌금 설정과는 독립이다", () => {
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", fines: false }), false);
   assert.equal(rules.isSpecialPoll({ match_date: "2026-10-17", title: "이벤트" }), false);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>팀 관리 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261017a">
+  <link rel="stylesheet" href="styles.css?v=20261018a">
 </head>
 <body class="rollout-page">
   <h1>팀 관리</h1>
@@ -110,14 +110,14 @@
         if (tab === "members") {
           panel.innerHTML = `<h2>멤버</h2><p class="operations-hint">members.json은 오프라인 폴백용입니다. 이 화면의 변경은 팀 데이터에 반영됩니다.</p><button type="button" data-new-member>새 멤버</button><p class="operations-hint">표를 좌우로 밀어 연락처와 계좌를 확인하세요.</p><div class="operations-scroll" tabindex="0" role="region" aria-label="멤버 목록"><table class="operations-table"><thead><tr>${["이름", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌", "편집"].map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${members.map((person) => `<tr class="${person.active ? "" : "operations-inactive"}"><th scope="row">${e(person.name)}</th><td>${person.active ? "활동" : "비활성"}</td><td>${person.is_president ? "회장" : "—"}</td><td>${e(person.joined_at || "—")}</td><td>${e(person.injury_from || "—")} ~ ${e(person.injury_to || "—")}</td><td>${e(person.phone || "—")}</td><td>${e(person.bank_account || "—")}</td><td><button type="button" data-edit-member="${e(person.id)}">${e(person.name)} 편집</button></td></tr>`).join("")}</tbody></table></div>`;
         } else if (tab === "polls") {
-          panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>투표 만들기</button><div class="page-grid">${polls.map((poll) => {
+          panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>투표 만들기</button><p class="operations-hint">취소는 "이번 경기 없음"(기록 유지), 삭제는 잘못 만든 투표 제거입니다. 매치나 벌금 기록이 연결된 투표는 삭제할 수 없습니다.</p><div class="page-grid">${polls.map((poll) => {
             const ballot = votes.filter((vote) => vote.poll_id === poll.id);
             const summary = ExicanRules.attendanceSummary(ballot, members);
             const status = { scheduled: "예정", open: "진행 중", closed: "마감", cancelled: "취소" }[ExicanRules.pollStatus(poll, new Date().toISOString())];
             return `<article class="operations-poll"><h3>${e(ExicanRules.pollTitle(poll))} · ${status}</h3><div class="poll-badges">${ExicanRules.isSpecialPoll(poll) ? '<span class="chip">특별</span>' : ""}${poll.fines === false ? '<span class="chip">벌금 없음</span>' : ""}</div><p class="meta">경기 ${e(poll.match_date)} · 마감 ${e(ExicanPollForm.formatTime(poll.closes_at))} (한국 시간)</p><p>참석 ${summary.attend.length} · 불참 ${summary.absent.length} · 미투표 ${summary.pending.length}</p><details><summary>멤버별 투표 보기</summary><ul>${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
               const vote = ballot.find((row) => row.member_id === person.id);
               return `<li>${e(person.name)} · ${vote ? vote.choice === "attend" ? "참석" : "불참" : "미투표"}${vote?.is_late ? " · 지각 투표" : ""}</li>`;
-            }).join("")}</ul></details>${poll.cancelled ? '<p class="operations-hint">취소 해제하면 투표가 다시 열립니다. 같은 날짜로 투표를 만들어도 취소가 해제됩니다.</p>' : ""}<button type="button" class="btn-destructive" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "투표 취소 해제" : "투표 취소"}</button></article>`;
+            }).join("")}</ul></details>${poll.cancelled ? '<p class="operations-hint">취소 해제하면 투표가 다시 열립니다. 같은 날짜로 투표를 만들어도 취소가 해제됩니다.</p>' : ""}<div class="home-actions"><button type="button" class="btn-destructive" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "투표 취소 해제" : "투표 취소"}</button><button type="button" class="btn-destructive" data-delete-poll="${e(poll.id)}">투표 삭제</button></div></article>`;
           }).join("") || "<p>투표가 없습니다.</p>"}</div>`;
         } else {
           panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<nav class="rows"><a class="row" href="ledger.html"><span class="row-label">장부에서 기록 확인</span><span class="row-action">보기</span></a></nav>'}<div class="page-grid">${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<section><h3 class="operations-list-title">${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}</section>`).join("")}</div><div id="admin-ledger-preview"></div>`;
@@ -206,6 +206,12 @@
           if (button.dataset.cancelPoll) {
             const poll = polls.find((row) => row.id === button.dataset.cancelPoll);
             write(async () => { await data.cancelPoll(poll.id, !poll.cancelled); return "투표 상태를 저장했습니다"; });
+          }
+          if (button.dataset.deletePoll) {
+            const poll = polls.find((row) => row.id === button.dataset.deletePoll);
+            const count = votes.filter((vote) => vote.poll_id === poll.id).length;
+            modal(`<form class="operations-form"><h2 id="dialog-title">투표 삭제</h2><p>${e(ExicanRules.pollTitle(poll))} 투표를 지웁니다. 투표 기록 ${count}건이 함께 삭제되고 되돌릴 수 없습니다.</p><p class="operations-hint">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="btn-destructive">삭제</button></form>`,
+              () => write(async () => { await data.deletePoll(poll.id); return "투표를 삭제했습니다"; }));
           }
           if (button.hasAttribute("data-new-member")) editMember();
           if (button.dataset.editMember) editMember(button.dataset.editMember);

@@ -98,7 +98,31 @@
     return `${Math.floor(seconds / size)}${unit} ${delta < 0 ? "후" : "전"}`;
   }
 
-  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative };
+  // "10월 24일 토요일" — 투표 제목("10/24(토)")보다 한 단계 자세한 경기 날짜.
+  function longDate(dateStr) {
+    const [, month, day] = dateStr.split("-").map(Number);
+    const weekday = "일월화수목금토"[new Date(`${dateStr}T00:00:00Z`).getUTCDay()];
+    return `${month}월 ${day}일 ${weekday}요일`;
+  }
+
+  // 투표에 해당하는 확정 매치. 투표 id 연결을 우선하고, 없으면 같은 날짜의 예정 매치.
+  function matchForPoll(poll, matches) {
+    const scheduled = (matches || []).filter((row) => row.status === "scheduled");
+    return scheduled.find((row) => row.poll_id === poll.id) || scheduled.find((row) => row.match_date === poll.match_date) || null;
+  }
+
+  // 투표 보드의 "경기 일시" 줄. 확정 매치가 있으면 시간·구장과 상대·포맷·구장비, 없으면 날짜와 미확정 표시.
+  function pollMatchLine(poll, match) {
+    if (!match) return { confirmed: false, title: `${longDate(poll.match_date)} · 매치 미확정`, sub: "매칭 탭에서 상대팀을 찾는 중입니다" };
+    const time = match.start_time ? `${match.start_time.slice(0, 5)}${match.end_time ? "~" + match.end_time.slice(0, 5) : ""}` : "시간 미정";
+    return {
+      confirmed: true,
+      title: `${longDate(match.match_date)} ${time} · ${match.venue || "구장 미정"}`,
+      sub: `${match.opponent ? "상대 " + match.opponent : "상대 미정"} · ${match.format || "포맷 미정"} · 구장비 ${Number(match.cost || 0).toLocaleString("ko-KR")}원${match.memo ? " · " + match.memo : ""}`
+    };
+  }
+
+  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine };
   if (typeof window !== "undefined") window.ExicanRules = rules;
   if (typeof module !== "undefined" && module.exports) module.exports = rules;
 })();
