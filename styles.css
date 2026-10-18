@@ -745,3 +745,8 @@ tbody th { font-weight: 600; }
 .operations-col-remove { width: auto; min-width: 0; min-height: 24px; margin: 0 0 0 4px; padding: 0 7px; font-size: var(--fs-label); line-height: 1; color: var(--ink-3); border-style: dashed; vertical-align: middle; }
 .operations-col-remove:hover { color: var(--ink); border-style: solid; }
 .operations-table th.operations-custom-col { color: var(--ink-2); }
+
+/* 019b: 멤버 표 정렬 — 열 삭제 ×는 작게 머리글 글자에 맞추고, 남는 너비는 마지막(편집) 열이 흡수해 열 간격을 고르게. */
+.operations-table thead th { vertical-align: middle; }
+.rollout-page .operations-table .operations-col-remove, .operations-table .operations-col-remove { min-height: 20px; height: 20px; padding: 0 6px; margin: 0 0 0 4px; font-size: 11px; line-height: 18px; vertical-align: middle; }
+.operations-table th:last-child, .operations-table td:last-child { width: 100%; }
