@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018d">
+  <link rel="stylesheet" href="styles.css?v=20261019a">
 </head>
 <body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
@@ -84,6 +84,7 @@
     renderNav("rotation");
     const LS_KEY = "futsal_members_override";
     const integration = { connected: false, admin: false, members: [], poll: null, matches: [], result: null, saving: false };
+    let loadAttendees = null;
     const demo = ExicanData.mode() === "demo";
     const explicitDemo = new URLSearchParams(location.search).get("demo") === "1";
     if (demo) document.getElementById("rotation-admin-link").search = "?tab=members&demo=1";
@@ -106,8 +107,12 @@
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
 
     async function loadMembers() {
+      let role = "team";
+      if (!demo) {
+        await ExicanAuth.renderAuthBar();
+        role = await ExicanAuth.requireTeam();
+      }
       try {
-        const role = demo ? "team" : await ExicanAuth.renderAuthBar();
         if ((demo && explicitDemo) || (!demo && ["team", "admin"].includes(role))) {
           const members = await ExicanData.members();
           if (!members.length) throw new Error("활동 멤버가 없습니다");
@@ -132,13 +137,14 @@
                   await ExicanMember.ensure(members);
                   renderIdentity();
                   await refreshSave();
+                  await autoLoadAttendees();
                 });
                 return;
               }
               const button = document.createElement("button");
               button.type = "button"; button.className = "secondary"; button.textContent = "내 이름 선택";
               button.onclick = async () => {
-                try { await ExicanMember.ensure(members); renderIdentity(); await refreshSave(); }
+                try { await ExicanMember.ensure(members); renderIdentity(); await refreshSave(); await autoLoadAttendees(); }
                 catch (error) { showToast(error.message); }
               };
               container.appendChild(button);
@@ -172,6 +178,13 @@
         html += `<option value="${i}" ${i === selectedValue ? "selected" : ""}>Q${i}</option>`;
       }
       return html;
+    }
+
+    async function autoLoadAttendees() {
+      if (loadAttendees && integration.connected && integration.admin && integration.poll &&
+          integration.matches.some((match) => match.poll_id === integration.poll.id)) {
+        await loadAttendees(false);
+      }
     }
 
     function render(members) {
@@ -266,7 +279,7 @@
 
       updateCount();
       let currentContext = null;
-      document.getElementById("load-attendees").addEventListener("click", async () => {
+      loadAttendees = async (notify = true) => {
         const button = document.getElementById("load-attendees");
         button.disabled = true;
         try {
@@ -278,10 +291,14 @@
             checkbox.checked = names.has(members.find((member) => member.id === checkbox.value)?.name);
             checkbox.dispatchEvent(new Event("change"));
           }
-          showToast(`참석 ${selected.size}명 선택`);
-        } catch (error) { showToast(error.message); }
+          if (notify) showToast(`참석 ${selected.size}명 선택`);
+        } catch (error) {
+          if (notify) showToast(error.message);
+          else document.getElementById("rotation-notice").textContent = `참석자 자동 선택 실패: ${error.message}`;
+        }
         finally { button.disabled = !integration.connected; }
-      });
+      };
+      document.getElementById("load-attendees").addEventListener("click", () => loadAttendees());
 
       const runAndRender = (offset) => {
         const { chosen, format, quartersMap } = currentContext;
@@ -416,19 +433,21 @@
 
     if (!demo) ExicanAuth.onAuthChange(async () => {
       const role = await ExicanAuth.getRole();
+      const wasAdmin = integration.admin;
       integration.admin = role === "admin";
       integration.connected = ["team", "admin"].includes(role) && integration.members.length > 0;
       document.getElementById("load-attendees").disabled = !integration.connected;
       document.getElementById("rotation-save").hidden = !integration.admin || !integration.result;
       if (!integration.admin) document.getElementById("rotation-match").textContent = "";
       updateRotationBoard();
+      if (!wasAdmin && integration.admin) await autoLoadAttendees();
     }).catch((error) => { document.getElementById("rotation-notice").textContent = error.message; });
 
     loadMembers()
-      .then((members) => {
+      .then(async (members) => {
         if (!Array.isArray(members)) { showFatal("members가 배열이 아님: " + typeof members); return; }
         if (members.length === 0) { showFatal("members가 빈 배열. localStorage 또는 members.json 확인 필요."); return; }
-        try { render(members); }
+        try { render(members); await autoLoadAttendees(); }
         catch (e) { showFatal("render 에러: " + e.message + "\n" + (e.stack || "")); }
       })
       .catch((e) => showFatal("loadMembers 실패: " + e.message));

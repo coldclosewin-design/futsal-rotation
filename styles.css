@@ -750,3 +750,7 @@ tbody th { font-weight: 600; }
 .operations-table thead th { vertical-align: middle; }
 .rollout-page .operations-table .operations-col-remove, .operations-table .operations-col-remove { min-height: 20px; height: 20px; padding: 0 6px; margin: 0 0 0 4px; font-size: 11px; line-height: 18px; vertical-align: middle; }
 .operations-table th:last-child, .operations-table td:last-child { width: 100%; }
+
+/* 018 */
+.vote-member-list li[data-choice="absent"],
+.vote-member-list li[data-choice="absent"] time { color: var(--ink-3); }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>참석 투표 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018d">
+  <link rel="stylesheet" href="styles.css?v=20261019a">
 </head>
 <body class="rollout-page">
   <h1>참석 투표</h1>
@@ -51,6 +51,7 @@
   <script src="js/ui.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/rules.js"></script>
+  <script src="js/polls.js"></script>
   <script src="js/candidates.js"></script>
   <script src="js/member.js"></script>
   <script src="js/data.js"></script>
@@ -83,6 +84,7 @@
       let member = null;
       let role = "anon";
       let busy = false;
+      let initialPollLink = true;
 
       function render() {
         const now = new Date().toISOString();
@@ -246,16 +248,19 @@
       }
       async function loadPoll(preferredId = poll?.id) {
         const request = ++version;
+        const linkedId = initialPollLink ? new URLSearchParams(location.search).get("poll") : null;
         const [upcoming] = await Promise.all([ExicanData.upcomingPolls(), loadMatches()]);
-        const selected = upcoming.find((row) => row.id === preferredId) ||
-          upcoming.find((row) => rules.pollStatus(row, new Date().toISOString()) === "open") || upcoming[0] || null;
+        const selected = ExicanPolls.selectPoll(upcoming, linkedId || preferredId);
         const ballot = selected ? await ExicanData.votes(selected.id) : [];
         if (request !== version) return;
+        const missingLink = linkedId && !upcoming.some((row) => row.id === linkedId);
+        initialPollLink = false;
         polls = upcoming;
         poll = selected;
         votes = ballot;
-        message.hidden = Boolean(poll);
-        message.textContent = poll ? "" : "아직 열린 투표가 없습니다. 일요일 13:00에 자동 생성됩니다.";
+        message.hidden = Boolean(poll) && !missingLink;
+        message.textContent = missingLink ? "링크의 투표를 찾을 수 없어 현재 투표를 보여 줍니다" : "";
+        if (!poll) message.textContent += `${missingLink ? " · " : ""}아직 열린 투표가 없습니다. 일요일 13:00에 자동 생성됩니다.`;
         render();
       }
 
@@ -273,7 +278,7 @@
         const saved = await ExicanData.castVote(poll.id, member.id, button.dataset.choice);
         if (request !== version) return;
         votes = votes.filter((vote) => vote.member_id !== saved.member_id).concat(saved);
-        showToast(`${saved.choice === "attend" ? "참석" : "불참"}으로 저장했습니다${saved.is_late ? " · 지각 투표" : ""}`);
+        showToast(`${member.name} · ${saved.choice === "attend" ? "참석" : "불참"}으로 저장했습니다${saved.is_late ? " · 지각 투표" : ""}`);
       })));
       cancel.addEventListener("click", () => {
         const checked = !poll.cancelled;

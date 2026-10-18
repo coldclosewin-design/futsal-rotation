@@ -2,6 +2,7 @@ window.ExicanMember = (() => {
   const key = "exican_member_id";
   let pending = null;
   let memoryId = null;
+  let previousName = null;
 
   function getId() {
     try { return localStorage.getItem(key) || memoryId; }
@@ -30,6 +31,11 @@ window.ExicanMember = (() => {
     backdrop.className = "modal-backdrop";
     backdrop.innerHTML = '<div class="modal member-picker" role="dialog" aria-modal="true" aria-labelledby="member-title"><h2 id="member-title">내 이름을 선택하세요</h2><div class="member-picker-grid"></div></div>';
     const grid = backdrop.querySelector(".member-picker-grid");
+    if (previousName) {
+      const notice = document.createElement("p");
+      notice.textContent = `이전 이름(${previousName})으로 한 투표는 그대로 남습니다. 잘못 골랐다면 회장에게 알려주세요.`;
+      grid.before(notice);
+    }
     const background = Array.from(document.body.children).filter((element) => !["SCRIPT", "STYLE"].includes(element.tagName));
     const inertStates = background.map((element) => element.inert);
     background.forEach((element) => { element.inert = true; });
@@ -80,9 +86,10 @@ window.ExicanMember = (() => {
     button.textContent = "변경";
     button.addEventListener("click", async () => {
       button.disabled = true;
+      previousName = getId() === member.id ? member.name : null;
       try { await onChange(); }
       catch (error) { showToast(error.message); }
-      finally { button.disabled = false; }
+      finally { previousName = null; button.disabled = false; }
     });
     container.appendChild(button);
   }
