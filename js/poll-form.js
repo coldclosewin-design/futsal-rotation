@@ -40,7 +40,7 @@
       <label for="poll-closes">마감 시각 (한국 시간)</label><input id="poll-closes" name="closes_at" type="datetime-local" required>
       <label><input name="fines" type="checkbox"> 미투표 벌금 적용</label>
       <p class="auth-error" role="alert"></p>
-      <div class="home-actions"><button type="submit" class="primary">만들기</button><button type="button" class="secondary" data-close>취소</button></div>
+      <div class="home-actions"><button type="submit" class="primary">만들기</button><button type="button" class="secondary" data-close>닫기</button></div>
     </form>`;
     const form = backdrop.querySelector("form");
     const fields = form.elements;

@@ -183,11 +183,29 @@ describe("data-admin 저장 계약", () => {
     assert.equal(rows.find((row) => row.member_id === "m01").status, "late");
     await assert.rejects(() => data.saveAttendance("demo-ledger-match-1", [{ member_id: "m02", status: "invalid" }]), /출석 상태/);
   });
-  test("매치 완료 스코어 필수·배정표 저장·임의 필드 차단", async () => {
+  test("매치 완료 스코어는 둘 다 없어도 저장하고 한쪽만 입력하면 거절한다", async () => {
     const data = environment();
-    await assert.rejects(() => data.updateMatch("demo-match-1", { status: "played" }), /스코어/);
+    const empty = await data.updateMatch("demo-match-1", { status: "played", score_us: null, score_them: null });
+    assert.equal(empty.status, "played");
+    assert.equal(empty.score_us, null);
+    assert.equal(empty.score_them, null);
+    for (const patch of [{ score_us: 0 }, { score_them: 1 }, { score_us: -1, score_them: 0 }, { score_us: 1.5, score_them: 0 }, { score_us: 2147483648, score_them: 0 }]) {
+      await assert.rejects(() => data.updateMatch("demo-match-1", patch), /스코어/);
+    }
+    const draw = await data.updateMatch("demo-match-1", { score_us: 0, score_them: 0 });
+    assert.equal(draw.score_us, 0); assert.equal(draw.score_them, 0);
+  });
+  test("매치 완료·배정표 저장·임의 필드 차단", async () => {
+    const data = environment();
+    assert.equal((await data.updateMatch("demo-match-1", { status: "played" })).status, "played");
     const row = await data.updateMatch("demo-match-1", { status: "played", score_us: 4, score_them: 3, cost: 70000, schedule: [], opponent: "변경 금지" });
     assert.equal(row.status, "played"); assert.equal(row.cost, 70000); assert.equal(row.opponent, null);
+  });
+  test("예정 매치의 출석 저장은 매치 상태를 바꾸지 않는다", async () => {
+    const data = environment();
+    await data.saveAttendance("demo-match-1", [{ member_id: "m01", status: "late" }]);
+    assert.equal((await data.matches()).find((row) => row.id === "demo-match-1").status, "scheduled");
+    assert.equal((await data.attendance("demo-match-1"))[0].status, "late");
   });
   test("배정 재저장은 중복 행 없이 반영", async () => {
     const data = environment();
@@ -207,6 +225,17 @@ describe("data-admin 저장 계약", () => {
     await data.addLedger(row);
     await assert.rejects(() => data.addLedger(row), { code: "23505" });
     await assert.rejects(() => data.addLedger({ ...row, member_id: null, category: "venue_fee", amount: -60000, ref_match_id: "demo-ledger-match-1", settled: true }), { code: "23505" });
+  });
+  test("확정 매치 구장비를 팀 지출로 한 번만 기록한다", async () => {
+    const data = environment();
+    const row = { member_id: null, category: "venue_fee", amount: -60000, ref_match_id: "demo-match-1",
+      settled: true, entry_date: "2026-10-24", note: "테스트 구장 구장비" };
+    const saved = await data.addLedger(row);
+    for (const [key, value] of Object.entries(row)) assert.equal(saved[key], value);
+    await assert.rejects(() => data.addLedger(row), { code: "23505" });
+    const fees = (await data.ledgerRange()).filter((entry) => entry.category === "venue_fee" && entry.ref_match_id === row.ref_match_id);
+    assert.equal(fees.length, 1);
+    assert.equal(fees.reduce((sum, entry) => sum + entry.amount, 0), -60000);
   });
   test("DB 권한 오류 42501/403을 회장 안내로 래핑", async () => {
     const data = environment({ live: true, failure: { code: "42501", message: "permission denied" } });

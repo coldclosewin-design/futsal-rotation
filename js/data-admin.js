@@ -255,7 +255,8 @@
     const next = { ...row, ...patch };
     if (!Object.hasOwnProperty.call(window.ExicanAttendance.MATCH_LABELS, next.status)) throw new Error("매치 상태를 확인하세요");
     if (!Number.isInteger(next.cost) || next.cost < 0 || next.cost > 2147483647) throw new Error("구장비는 0 이상의 정수로 입력하세요");
-    if (next.status === "played" && [next.score_us, next.score_them].some((score) => !Number.isInteger(score) || score < 0 || score > 2147483647)) {
+    if (next.status === "played" && (next.score_us != null || next.score_them != null) &&
+        [next.score_us, next.score_them].some((score) => !Number.isInteger(score) || score < 0 || score > 2147483647)) {
       throw new Error("완료 경기의 스코어를 입력하세요");
     }
     if (api.mode() === "demo") {

@@ -110,6 +110,16 @@
     </form>
   </dialog>
 
+  <dialog id="settle-dialog" class="ledger-dialog" aria-labelledby="settle-title">
+    <form id="settle-form">
+      <h2 id="settle-title">정산 확인</h2>
+      <p id="settle-summary"></p>
+      <p class="ledger-form-error" role="alert"></p>
+      <button type="button" class="secondary" data-close>닫기</button>
+      <button type="submit" class="primary" data-write>정산</button>
+    </form>
+  </dialog>
+
   <script src="js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/ui.js"></script>
@@ -132,6 +142,7 @@
       let member = null, role = "anon", busy = false, version = 0;
       const expanded = new Set();
       const selected = new Set();
+      let settlementIds = [], settlementMessage = "";
       get("ledger-month").value = rules.monthOf(today());
       get("previous-month").innerHTML = icon("previous");
       get("next-month").innerHTML = icon("chevron");
@@ -144,7 +155,8 @@
 
       function entryHtml(row) {
         const label = rules.CATEGORY_LABELS[row.category] || row.category;
-        const checkbox = isAdmin() && !row.settled ? `<label><input type="checkbox" data-settle="${escapeHtml(row.id)}" ${selected.has(String(row.id)) ? "checked" : ""} ${busy ? "disabled" : ""} aria-label="${escapeHtml(`${nameOf(row.member_id)} ${row.entry_date} ${label} 정산 선택`)}"> 미정산</label>` : row.settled ? "정산 완료" : "미정산";
+        const undo = isAdmin() && row.member_id != null && row.settled ? `<span class="candidate-actions">정산 완료 <button type="button" class="secondary" data-unsettle="${escapeHtml(row.id)}" data-write>정산 취소</button></span>` : null;
+        const checkbox = isAdmin() && !row.settled ? `<label><input type="checkbox" data-settle="${escapeHtml(row.id)}" ${selected.has(String(row.id)) ? "checked" : ""} ${busy ? "disabled" : ""} aria-label="${escapeHtml(`${nameOf(row.member_id)} ${row.entry_date} ${label} 정산 선택`)}"> 미정산</label>` : undo || (row.settled ? "정산 완료" : "미정산");
         return `<tr><td>${escapeHtml(row.entry_date)}</td><td>${escapeHtml(label)}</td><td>${formatWon(row.amount)}</td><td class="ledger-note">${escapeHtml(row.note || "—")}</td><td>${checkbox}</td></tr>`;
       }
 
@@ -212,6 +224,16 @@
         dialog.showModal();
       }
 
+      function confirmSettlement(entries, label, message) {
+        if (busy || !isAdmin() || !entries.length) return;
+        settlementIds = entries.map((row) => row.id);
+        settlementMessage = message;
+        const [year, number] = month().split("-");
+        const amount = entries.reduce((sum, row) => sum + row.amount, 0);
+        get("settle-summary").textContent = `${label} · ${year}년 ${Number(number)}월 · 미정산 ${entries.length}건 · ${formatWon(amount)}을 정산 완료로 바꿉니다.`;
+        openDialog("settle-dialog");
+      }
+
       async function write(operation, dialog) {
         if (busy) return;
         busy = true;
@@ -267,10 +289,15 @@
       });
       get("only-mine").addEventListener("change", () => { selected.clear(); render(); });
       get("member-ledger").addEventListener("click", (event) => {
+        const undo = event.target.closest("[data-unsettle]");
+        if (undo) {
+          if (isAdmin()) write(async () => { await ExicanData.setSettled([undo.dataset.unsettle], false); return "정산을 취소했습니다"; });
+          return;
+        }
         const settle = event.target.closest("[data-settle-member]");
         if (settle) {
-          const ids = monthRows().filter((row) => row.member_id === settle.dataset.settleMember && !row.settled).map((row) => row.id);
-          write(async () => { await ExicanData.setSettled(ids, true); return "이번 달 항목을 전부 정산했습니다"; });
+          const entries = monthRows().filter((row) => row.member_id === settle.dataset.settleMember && !row.settled);
+          confirmSettlement(entries, nameOf(settle.dataset.settleMember), "이번 달 항목을 전부 정산했습니다");
           return;
         }
         const row = event.target.closest("tr[data-member]");
@@ -286,10 +313,17 @@
         if (event.target.checked) selected.add(id); else selected.delete(id);
         updateBusy();
       });
-      get("settle-selected").addEventListener("click", () => write(async () => {
-        await ExicanData.setSettled(Array.from(selected), true);
-        return "선택한 항목을 정산했습니다";
-      }));
+      get("settle-selected").addEventListener("click", () => {
+        const entries = monthRows().filter((row) => selected.has(String(row.id)) && !row.settled);
+        confirmSettlement(entries, "선택 항목", "선택한 항목을 정산했습니다");
+      });
+      get("settle-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        write(async () => {
+          await ExicanData.setSettled(settlementIds, true);
+          return settlementMessage;
+        }, get("settle-dialog"));
+      });
       get("admin-claims").addEventListener("click", (event) => {
         const button = event.target.closest("[data-review]");
         if (button) write(async () => {

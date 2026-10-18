@@ -44,6 +44,7 @@
       const today = () => ExicanRules.kstDate(new Date());
       const dateAgo = (days) => new Date(Date.parse(`${today()}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10);
       const dialog = get("admin-dialog");
+      const openAttendance = new Set(), openPolls = new Set();
       let members = [], polls = [], votes = [], matches = [], claims = [], attendances = new Map();
       let role = "anon", tab = ["members", "polls", "matches"].includes(new URLSearchParams(location.search).get("tab")) ? new URLSearchParams(location.search).get("tab") : "members", busy = false, version = 0, allowed = false;
       const nameOf = (id) => members.find((person) => person.id === id)?.name || id;
@@ -53,6 +54,7 @@
         version += 1;
         allowed = false;
         members = []; polls = []; votes = []; matches = []; claims = []; attendances.clear();
+        openAttendance.clear(); openPolls.clear();
         get("admin-board").hidden = true;
         for (const id of ["admin-dday", "admin-claims-count", "admin-attendance-count", "admin-active-count"]) get(id).textContent = "—";
         for (const id of ["admin-claims-segment", "admin-attendance-segment"]) get(id).classList.remove("is-lit");
@@ -116,7 +118,7 @@
             const summary = ExicanRules.attendanceSummary(ballot, members);
             const statusKey = ExicanRules.pollStatus(poll, new Date().toISOString());
             const status = { scheduled: "예정", open: "진행 중", closed: "마감", cancelled: "취소" }[statusKey];
-            return `<article class="operations-poll" data-status="${statusKey}"><p class="poll-card-date">${e(ExicanRules.pollDateLabel(poll))} <span class="poll-status" data-status="${statusKey}">${status}</span></p><h3>${e(poll.title || "정기 경기")}</h3><div class="poll-badges">${ExicanRules.isSpecialPoll(poll) ? '<span class="chip">특별</span>' : ""}${poll.fines === false ? '<span class="chip">벌금 없음</span>' : ""}</div><p class="meta">경기 ${e(poll.match_date)} · 마감 ${e(ExicanPollForm.formatTime(poll.closes_at))} (한국 시간)</p><ul class="vote-member-list vote-counts" aria-label="투표 집계"><li data-choice="attend">참석 ${summary.attend.length}</li><li data-choice="absent">불참 ${summary.absent.length}</li><li data-choice="pending">미투표 ${summary.pending.length}</li></ul><details><summary>멤버별 투표 보기</summary><ul class="vote-member-list">${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
+            return `<article class="operations-poll" data-status="${statusKey}"><p class="poll-card-date">${e(ExicanRules.pollDateLabel(poll))} <span class="poll-status" data-status="${statusKey}">${status}</span></p><h3>${e(poll.title || "정기 경기")}</h3><div class="poll-badges">${ExicanRules.isSpecialPoll(poll) ? '<span class="chip">특별</span>' : ""}${poll.fines === false ? '<span class="chip">벌금 없음</span>' : ""}</div><p class="meta">경기 ${e(poll.match_date)} · 마감 ${e(ExicanPollForm.formatTime(poll.closes_at))} (한국 시간)</p><ul class="vote-member-list vote-counts" aria-label="투표 집계"><li data-choice="attend">참석 ${summary.attend.length}</li><li data-choice="absent">불참 ${summary.absent.length}</li><li data-choice="pending">미투표 ${summary.pending.length}</li></ul><details data-open-poll="${e(poll.id)}"><summary>멤버별 투표 보기</summary><ul class="vote-member-list">${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
               const vote = ballot.find((row) => row.member_id === person.id);
               return `<li data-choice="${vote ? vote.choice : "pending"}">${e(person.name)}${vote?.is_late ? '<span class="late-badge">지각</span>' : ""}</li>`;
             }).join("")}</ul></details>${poll.cancelled ? '<p class="operations-hint">취소 해제하면 투표가 다시 열립니다. 같은 날짜로 투표를 만들어도 취소가 해제됩니다.</p>' : ""}<div class="home-actions"><button type="button" class="btn-destructive" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "투표 취소 해제" : "투표 취소"}</button><button type="button" class="btn-destructive" data-delete-poll="${e(poll.id)}">투표 삭제</button></div></article>`;
@@ -124,6 +126,19 @@
         } else {
           panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<nav class="rows"><a class="row" href="ledger.html"><span class="row-label">장부에서 기록 확인</span><span class="row-action">보기</span></a></nav>'}<div class="page-grid">${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<section><h3 class="operations-list-title">${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}</section>`).join("")}</div><div id="admin-ledger-preview"></div>`;
         }
+        restoreDetails("[data-open-attendance]", "openAttendance", openAttendance);
+        restoreDetails("[data-open-poll]", "openPoll", openPolls);
+      }
+
+      function restoreDetails(selector, key, opened) {
+        get("admin-panel").querySelectorAll(selector).forEach((details) => {
+          const id = details.dataset[key];
+          details.open = opened.has(id);
+          details.addEventListener("toggle", () => {
+            if (!details.isConnected) return;
+            if (details.open) opened.add(id); else opened.delete(id);
+          });
+        });
       }
 
       function matchCard(match) {
@@ -131,8 +146,8 @@
         const ballot = votes.filter((vote) => vote.poll_id === match.poll_id);
         const people = members.filter((person) => person.active || saved.some((row) => row.member_id === person.id));
         return `<article class="operations-match" data-match="${e(match.id)}"><h4>${e(match.match_date)} ${e(match.start_time?.slice(0, 5) || "")} · ${e(match.venue || "구장 미정")}</h4><p>${e(match.opponent || "상대 미정")} · ${e(match.format || "포맷 미정")} · ${formatWon(match.cost)} <span class="poll-status">${rules.MATCH_LABELS[match.status]}</span></p>
-          <form data-match-form="${e(match.id)}" class="operations-form"><label>상태<select name="status">${Object.entries(rules.MATCH_LABELS).map(([value, label]) => option(value, label, match.status)).join("")}</select></label><div class="operations-pair"><label>우리 스코어<input name="score_us" type="number" min="0" max="2147483647" value="${match.score_us ?? ""}" ${match.status === "played" ? "required" : ""}></label><label>상대 스코어<input name="score_them" type="number" min="0" max="2147483647" value="${match.score_them ?? ""}" ${match.status === "played" ? "required" : ""}></label></div><label>구장비<input name="cost" type="number" min="0" max="2147483647" required value="${match.cost}"></label><label>메모<textarea name="memo">${e(match.memo || "")}</textarea></label><button type="submit">매치 저장</button></form>
-          ${match.status === "played" ? `<details class="operations-attendance"><summary>출석 기록</summary><form data-attendance-form="${e(match.id)}">${people.map((person) => {
+          <form data-match-form="${e(match.id)}" class="operations-form"><label>상태<select name="status">${Object.entries(rules.MATCH_LABELS).map(([value, label]) => option(value, label, match.status)).join("")}</select></label><div class="operations-pair"><label>우리 스코어<input name="score_us" type="number" min="0" max="2147483647" value="${match.score_us ?? ""}"></label><label>상대 스코어<input name="score_them" type="number" min="0" max="2147483647" value="${match.score_them ?? ""}"></label></div><label>구장비<input name="cost" type="number" min="0" max="2147483647" required value="${match.cost}"></label><label>메모<textarea name="memo">${e(match.memo || "")}</textarea></label><button type="submit">매치 저장</button></form>
+          ${match.status === "played" || match.match_date <= today() ? `<details class="operations-attendance" data-open-attendance="${e(match.id)}"><summary>출석 기록</summary><p class="operations-hint">출석을 저장해도 경기 상태는 그대로입니다. 끝났으면 상태를 경기 완료로 바꾸세요.</p><form data-attendance-form="${e(match.id)}">${people.map((person) => {
             const existing = saved.find((row) => row.member_id === person.id);
             const selected = existing?.status || (ballot.some((vote) => vote.member_id === person.id && vote.choice === "attend") ? "present" : "");
             return `<fieldset><legend>${e(person.name)}</legend><div class="operations-radios">${Object.entries({ ...rules.ATTENDANCE_LABELS, "": "해당 없음" }).map(([value, label]) => `<label><input type="radio" name="${e(person.id)}" value="${value}" ${selected === value ? "checked" : ""} ${existing && !value ? "disabled" : ""}>${label}</label>`).join("")}</div></fieldset>`;
@@ -177,7 +192,7 @@
       }
 
       function previewRows(rows, title, noun) {
-        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="${noun === "벌금" ? "btn-destructive" : "primary"}" ${rows.length ? "" : "disabled"}>확인 · 기록</button></form>`, () => write(async () => {
+        modal(`<form><h2 id="dialog-title">${e(title)}</h2><ul>${rows.map((row) => `<li>${e(row.member_id ? nameOf(row.member_id) : "팀")} · ${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${formatWon(row.amount)}</li>`).join("") || "<li>기록할 항목이 없습니다. 출석을 먼저 저장하세요.</li>"}</ul><p>총 ${rows.length}건</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="${noun === "벌금" ? "btn-destructive" : "primary"}" ${rows.length ? "" : "disabled"}>확인 · 기록</button></form>`, () => write(async () => {
           let count = 0, duplicate = 0;
           for (const row of rows) {
             try { await data.addLedger(row); count += 1; }
@@ -209,12 +224,17 @@
           if (button.dataset.tab) { tab = button.dataset.tab; render(); return; }
           if (button.dataset.cancelPoll) {
             const poll = polls.find((row) => row.id === button.dataset.cancelPoll);
-            write(async () => { await data.cancelPoll(poll.id, !poll.cancelled); return "투표 상태를 저장했습니다"; });
+            if (poll.cancelled) {
+              write(async () => { await data.cancelPoll(poll.id, false); return "취소를 해제했습니다"; });
+            } else {
+              modal(`<form class="operations-form"><h2 id="dialog-title">투표 취소</h2><p>${e(ExicanRules.pollHeading(poll))} 투표를 숨깁니다. 투표·벌금 기록은 남고, 관리 → 투표에서 취소 해제할 수 있습니다. 이번 주 자동 생성은 이 날짜를 다시 만들지 않습니다.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">투표 취소</button></form>`,
+                () => write(async () => { await data.cancelPoll(poll.id, true); return "투표를 취소했습니다"; }));
+            }
           }
           if (button.dataset.deletePoll) {
             const poll = polls.find((row) => row.id === button.dataset.deletePoll);
             const refs = await data.pollReferences(poll.id);
-            modal(`<form class="operations-form"><h2 id="dialog-title">투표 삭제</h2><p>${e(ExicanRules.pollTitle(poll))} 투표를 지웁니다. ${e(ExicanRules.deleteSummary(refs))}</p><p class="operations-hint">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="btn-destructive">삭제</button></form>`,
+            modal(`<form class="operations-form"><h2 id="dialog-title">투표 삭제</h2><p>${e(ExicanRules.pollTitle(poll))} 투표를 지웁니다. ${e(ExicanRules.deleteSummary(refs))}</p><p class="operations-hint">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">삭제</button></form>`,
               () => write(async () => { await data.deletePoll(poll.id); return "투표를 삭제했습니다"; }));
           }
           if (button.hasAttribute("data-new-member")) editMember();
@@ -224,7 +244,7 @@
           }
           if (button.dataset.removeColumn) {
             const column = button.dataset.removeColumn;
-            modal(`<form class="operations-form"><h2 id="dialog-title">열 삭제</h2><p>"${e(column)}" 열과 모든 멤버의 값을 지웁니다. 되돌릴 수 없습니다.</p><p role="alert"></p><button type="button" class="secondary" data-close>취소</button><button type="submit" class="btn-destructive">열 삭제</button></form>`,
+            modal(`<form class="operations-form"><h2 id="dialog-title">열 삭제</h2><p>"${e(column)}" 열과 모든 멤버의 값을 지웁니다. 되돌릴 수 없습니다.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">열 삭제</button></form>`,
               () => write(async () => { await data.removeMemberColumn(column); return "열을 삭제했습니다"; }));
           }
           if (button.dataset.editMember) editMember(button.dataset.editMember);
@@ -245,12 +265,6 @@
         } catch (error) { showToast(error.message); }
       });
 
-      get("admin-content").addEventListener("change", (event) => {
-        const input = event.target;
-        if (input.name === "status") {
-          for (const key of ["score_us", "score_them"]) input.form.elements[key].required = input.value === "played";
-        }
-      });
       get("admin-content").addEventListener("submit", (event) => {
         event.preventDefault();
         const form = event.target;
