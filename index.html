@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FC EXICAN 운영 허브</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018b">
+  <link rel="stylesheet" href="styles.css?v=20261018c">
 </head>
 <body class="home-page">
   <h1>FC EXICAN 운영 허브</h1>
@@ -170,7 +170,7 @@
         poll = ballot.status === "fulfilled" ? ballot.value.poll : null;
         weeklyPoll = ballot.status === "fulfilled" ? ballot.value.weeklyPoll : null;
         pollSummary = ballot.status === "fulfilled" ? ballot.value.summary : null;
-        get("home-poll-title").textContent = weeklyPoll ? ExicanRules.pollTitle(weeklyPoll) + " 투표" : "이번 주 투표";
+        get("home-poll-title").textContent = weeklyPoll ? ExicanRules.pollHeading(weeklyPoll) + " 투표" : "이번 주 투표";
         if (weeklyPoll) {
           const deadline = new Date(weeklyPoll.closes_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
           const status = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[ExicanRules.pollStatus(weeklyPoll, new Date().toISOString())];

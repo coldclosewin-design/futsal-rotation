@@ -104,6 +104,13 @@ test("pollTitle은 제목을 보존하고 없으면 실제 요일을 계산한�
   assert.equal(rules.pollTitle({ match_date: "2027-01-01", title: "" }), "1/1(금) 경기");
 });
 
+test("pollDateLabel·pollHeading은 제목이 있어도 날짜를 먼저 보여 준다", () => {
+  assert.equal(rules.pollDateLabel({ match_date: "2026-10-24" }), "10/24(토)");
+  assert.equal(rules.pollHeading({ match_date: "2026-10-24", title: "정기 풋살" }), "10/24(토) 정기 풋살");
+  assert.equal(rules.pollHeading({ match_date: "2026-10-22", title: null }), "10/22(목) 경기");
+  assert.equal(rules.pollHeading({ match_date: "2027-01-01", title: "" }), "1/1(금) 경기");
+});
+
 test("longDate는 월·일·요일을 풀어 쓴다", () => {
   assert.equal(rules.longDate("2026-10-24"), "10월 24일 토요일");
   assert.equal(rules.longDate("2027-01-01"), "1월 1일 금요일");

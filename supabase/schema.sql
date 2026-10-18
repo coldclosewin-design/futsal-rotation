@@ -34,6 +34,8 @@ create table if not exists public.members (
   created_at timestamptz not null default now()
 );
 alter table public.members enable row level security;
+-- 2026-10-18: 관리 화면에서 회장이 추가·삭제하는 사용자 정의 열(예: 포지션, 등번호). 키 = 열 이름, 값 = 문자열.
+alter table public.members add column if not exists extra jsonb not null default '{}'::jsonb;
 
 create table if not exists public.polls (
   id uuid primary key default gen_random_uuid(),

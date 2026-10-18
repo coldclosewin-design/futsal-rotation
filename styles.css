@@ -732,3 +732,16 @@ tbody th { font-weight: 600; }
 .home-board .board-title, .vote-page .board-title { font-size: clamp(22px, 6vw, 28px); letter-spacing: -0.02em; line-height: 1.15; }
 .board-count { display: flex; align-items: baseline; gap: 6px; margin: 0; }
 .board-count small { font-size: var(--fs-label); font-weight: 600; color: var(--board-muted); letter-spacing: 0; white-space: nowrap; }
+
+/* 019: 관리 투표 카드(날짜 크게·상태 칩·집계 칩), 멤버 표 사용자 정의 열. */
+.poll-card-date { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 2px; font-size: clamp(22px, 6vw, 28px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
+.operations-poll[data-status="cancelled"] .poll-card-date, .operations-poll[data-status="closed"] .poll-card-date { color: var(--ink-3); }
+.operations-poll[data-status="cancelled"] .poll-card-date { text-decoration: line-through; }
+.operations-poll h3 { margin: 0 0 6px; }
+.poll-status[data-status="closed"], .poll-status[data-status="scheduled"] { color: var(--ink-3); }
+.vote-counts { margin: 10px 0; }
+.vote-counts li { font-size: var(--fs-body); }
+.operations-poll details .vote-member-list { margin-top: 8px; }
+.operations-col-remove { width: auto; min-width: 0; min-height: 24px; margin: 0 0 0 4px; padding: 0 7px; font-size: var(--fs-label); line-height: 1; color: var(--ink-3); border-style: dashed; vertical-align: middle; }
+.operations-col-remove:hover { color: var(--ink); border-style: solid; }
+.operations-table th.operations-custom-col { color: var(--ink-2); }

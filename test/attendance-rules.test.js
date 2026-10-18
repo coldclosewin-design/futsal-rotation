@@ -114,6 +114,36 @@ describe("data-admin 저장 계약", () => {
     assert.equal((await data.members({ activeOnly: false })).find((row) => row.id === "m13").name, "테스트 수정");
     await assert.rejects(() => data.upsertMember({ name: "안준호" }), /같은 이름/);
   });
+  test("멤버 사용자 정의 열: 추가는 전원 빈 값, 편집은 extra 병합, 삭제는 전원에서 제거, 기본 열·중복·빈 이름 거절", async () => {
+    const data = environment();
+    const plain = (value) => JSON.parse(JSON.stringify(value)); // vm 컨텍스트 객체는 prototype이 달라 JSON 왕복으로 비교
+    assert.deepEqual(plain(data.memberColumns(await data.members({ activeOnly: false }))), []);
+    assert.equal(await data.addMemberColumn(" 포지션 "), "포지션");
+    const everyone = await data.members({ activeOnly: false });
+    assert.ok(everyone.length >= 12);
+    assert.ok(everyone.every((person) => person.extra && person.extra["포지션"] === ""));
+    assert.deepEqual(plain(data.memberColumns(everyone)), ["포지션"]);
+    await data.upsertMember({ id: "m03", name: "안준호", extra: { "포지션": "GK" } });
+    await data.addMemberColumn("등번호");
+    assert.deepEqual(plain(data.memberColumns(await data.members({ activeOnly: false }))), ["포지션", "등번호"]);
+    const president = (await data.members()).find((row) => row.id === "m03");
+    assert.deepEqual(plain(president.extra), { "포지션": "GK", "등번호": "" });
+    // 값이 없는 키도 빈 문자열로 남아 열이 사라지지 않는다. 숫자는 문자열로 저장한다.
+    await data.upsertMember({ id: "m03", name: "안준호", extra: { "등번호": 7 } });
+    assert.deepEqual(plain((await data.members()).find((row) => row.id === "m03").extra), { "포지션": "GK", "등번호": "7" });
+    await assert.rejects(() => data.addMemberColumn("포지션"), /이미 있습니다/);
+    await assert.rejects(() => data.addMemberColumn("이름"), /기본 열/);
+    await assert.rejects(() => data.addMemberColumn("   "), /열 이름을 입력/);
+    await assert.rejects(() => data.addMemberColumn("가나다라마바사아자차카타파하가나다라마바사"), /20자/);
+    await assert.rejects(() => data.removeMemberColumn("없는열"), /없는 열/);
+    assert.equal(await data.removeMemberColumn("포지션"), "포지션");
+    const after = await data.members({ activeOnly: false });
+    assert.deepEqual(plain(data.memberColumns(after)), ["등번호"]);
+    assert.ok(after.every((person) => !("포지션" in (person.extra || {}))));
+    const team = environment({ member: "m05" });
+    await assert.rejects(() => team.addMemberColumn("열"), /회장 로그인/);
+    await assert.rejects(() => team.removeMemberColumn("열"), /회장 로그인/);
+  });
   test("지난 투표와 현재 투표 분리·취소 반영", async () => {
     const data = environment();
     const polls = await data.polls();

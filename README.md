@@ -88,6 +88,8 @@ Supabase Dashboard의 **Authentication → Users**에서 해당 공용 사용자
 
 [`admin.html`](admin.html)의 **멤버** 탭에서 새 멤버를 추가하거나 이름·가입일·부상 기간 등을 수정합니다. 탈퇴자는 삭제하지 않고 **활동**을 해제해 투표 대상에서 제외하고 기존 장부·출석·배정 기록을 보존합니다. `members.json`은 오프라인 배정용 폴백으로 유지하며, DB 멤버 수정과 자동 동기화되지 않습니다.
 
+멤버 표의 **열 추가/삭제**는 `members.extra`(jsonb, 키=열 이름, 값=문자열)에 저장합니다. 열은 어느 멤버든 그 키를 가지면 존재하는 것으로 보고, 추가는 전원에게 빈 값을 넣고 삭제는 전원에서 키를 뺍니다. 2026-10-18 이전에 만든 DB는 `supabase/migrations/2026-10-18-members-extra.sql`을 SQL Editor에서 한 번 실행해야 하며, 적용 전에는 열 추가 시 안내 오류가 뜹니다.
+
 ### Cron 확인
 
 [GitHub Actions](https://github.com/coldclosewin-design/futsal-rotation/actions)에서 `cron.yml` 워크플로의 최근 실행과 수집·정산 로그를 확인합니다. 현재 예약은 매일 KST 06:00~24:00에 매시간 실행하며 GitHub 상황에 따라 지연될 수 있습니다. 수동 실행의 `dry_run`을 켜면 저장 없이 처리 대상을 점검합니다. GitHub Actions Secrets에는 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`를 등록하며 브라우저 설정에는 서비스 키를 넣지 않습니다.

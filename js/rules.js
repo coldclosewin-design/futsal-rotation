@@ -36,6 +36,18 @@
     return `${month}/${day}(${weekday}) 경기`;
   }
 
+  // "10/24(토)" — 제목이 있어도 날짜가 먼저 보이도록 쓰는 짧은 날짜 라벨.
+  function pollDateLabel(poll) {
+    const [, month, day] = poll.match_date.split("-").map(Number);
+    const weekday = "일월화수목금토"[new Date(`${poll.match_date}T00:00:00Z`).getUTCDay()];
+    return `${month}/${day}(${weekday})`;
+  }
+
+  // 보드·카드 제목: 날짜 + 제목(없으면 "경기"). 예: "10/24(토) 정기 풋살", "10/24(토) 경기".
+  function pollHeading(poll) {
+    return `${pollDateLabel(poll)} ${poll.title || "경기"}`;
+  }
+
   // 정기 투표 = 토요일 경기. 제목은 붙여도 되며 분류에 영향을 주지 않는다.
   function isSpecialPoll(poll) {
     return new Date(`${poll.match_date}T00:00:00Z`).getUTCDay() !== 6;
@@ -136,7 +148,7 @@
     return Math.round((Date.parse(`${kstDate(targetIso)}T00:00:00Z`) - Date.parse(`${kstDate(nowIso)}T00:00:00Z`)) / DAY);
   }
 
-  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine, deleteSummary, daysUntil };
+  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine, deleteSummary, daysUntil, pollDateLabel, pollHeading };
   if (typeof window !== "undefined") window.ExicanRules = rules;
   if (typeof module !== "undefined" && module.exports) module.exports = rules;
 })();

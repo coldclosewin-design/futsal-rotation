@@ -77,6 +77,10 @@
     for (const key of ["name", "phone", "bank_account", "active", "is_president", "joined_at", "injury_from", "injury_to"]) {
       if (Object.hasOwnProperty.call(input, key)) row[key] = input[key];
     }
+    // 사용자 정의 열 값. DB에 extra 열이 아직 없을 수 있으므로(마이그레이션 전) 값이 있을 때만 보낸다.
+    if (input.extra && typeof input.extra === "object" && (existing?.extra !== undefined || Object.keys(input.extra).length)) {
+      row.extra = cleanExtra({ ...(existing?.extra || {}), ...input.extra });
+    }
     row.name = String(row.name || "").trim();
     if (!row.name) throw new Error("이름을 입력하세요");
     if (people.some((person) => person.id !== row.id && person.name === row.name)) throw new Error("같은 이름의 멤버가 있습니다");
@@ -95,6 +99,67 @@
     }
     // 새 ID 경쟁 시 기존 사람을 덮어쓰지 않도록 신규는 insert로 충돌을 알린다.
     return live((client) => (existing ? client.from("members").upsert(row, { onConflict: "id" }) : client.from("members").insert(row)).select().single());
+  }
+
+  // ---- 멤버 표의 사용자 정의 열(members.extra jsonb) ----
+  // 열은 "어느 멤버든 그 키를 가지면 존재"한다. 추가는 전원에게 빈 값을 넣고, 삭제는 전원에서 키를 뺀다.
+  const BUILTIN_COLUMNS = ["이름", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌", "편집"];
+
+  function cleanExtra(extra) {
+    return Object.fromEntries(Object.entries(extra || {}).map(([key, value]) => [String(key).trim(), value === null || value === undefined ? "" : String(value)]).filter(([key]) => key));
+  }
+
+  function memberColumns(people) {
+    const seen = [];
+    for (const person of people) for (const key of Object.keys(person.extra || {})) if (!seen.includes(key)) seen.push(key);
+    return seen;
+  }
+
+  function columnName(name) {
+    const key = String(name || "").trim();
+    if (!key) throw new Error("열 이름을 입력하세요");
+    if (key.length > 20) throw new Error("열 이름은 20자 이하로 적으세요");
+    if (BUILTIN_COLUMNS.includes(key)) throw new Error("기본 열과 같은 이름은 쓸 수 없습니다");
+    return key;
+  }
+
+  function missingExtraColumn(error) {
+    return String(error?.code) === "42703" || /extra/.test(String(error?.message || "")) && /column|does not exist/.test(String(error?.message || ""));
+  }
+
+  async function writeExtra(people, change) {
+    for (const person of people) {
+      const extra = change(cleanExtra(person.extra));
+      if (JSON.stringify(extra) === JSON.stringify(cleanExtra(person.extra))) continue;
+      if (api.mode() === "demo") {
+        const target = (await demoData()).members.find((row) => row.id === person.id);
+        if (target) target.extra = extra;
+        continue;
+      }
+      try { await live((client) => client.from("members").update({ extra }).eq("id", person.id).select().single()); }
+      catch (error) {
+        if (missingExtraColumn(error)) throw new Error("DB에 members.extra 열이 없습니다. supabase/migrations/2026-10-18-members-extra.sql을 먼저 적용하세요");
+        throw error;
+      }
+    }
+  }
+
+  async function addMemberColumn(name) {
+    await requireAdmin();
+    const key = columnName(name);
+    const people = await members({ activeOnly: false });
+    if (memberColumns(people).includes(key)) throw new Error("같은 이름의 열이 이미 있습니다");
+    await writeExtra(people, (extra) => ({ ...extra, [key]: "" }));
+    return key;
+  }
+
+  async function removeMemberColumn(name) {
+    await requireAdmin();
+    const key = columnName(name);
+    const people = await members({ activeOnly: false });
+    if (!memberColumns(people).includes(key)) throw new Error("없는 열입니다");
+    await writeExtra(people, (extra) => { const { [key]: _removed, ...rest } = extra; return rest; });
+    return key;
   }
 
   async function polls({ from, to } = {}) {
@@ -271,11 +336,12 @@
     return original.addLedger(row);
   }
 
-  const methods = { members, upsertMember, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, deletePoll, pollReferences, votesByPolls,
+  const methods = { members, upsertMember, addMemberColumn, removeMemberColumn, polls, upcomingPolls, currentPoll, createPoll, cancelPoll, setPollCancelled: cancelPoll, deletePoll, pollReferences, votesByPolls,
     votes: (id) => votesByPolls([id]), matches, updateMatch, attendance,
     saveAttendance: (id, rows) => saveRows("match_attendance", id, rows), rotationHistory,
     saveRotationHistory: (id, rows) => saveRows("rotation_history", id, rows), matchHistory };
   if (original.ledgerRange) Object.assign(methods, { ledgerRange, addLedger });
+  api.memberColumns = memberColumns;
   Object.assign(api, Object.fromEntries(Object.entries(methods).map(([name, method]) => [name, async (...args) => {
     try { return await method(...args); }
     catch (error) {
