@@ -85,6 +85,7 @@
       let role = "anon";
       let busy = false;
       let initialPollLink = true;
+      let cancelledWeeklyDate = null;
 
       function render() {
         const now = new Date().toISOString();
@@ -234,17 +235,20 @@
           matchState = "error";
         }
       }
-      async function confirmDelete() {
-        const refs = await ExicanData.pollReferences(poll.id);
+      function confirmAction(title, body, action) {
         return new Promise((resolve) => {
           let settled = false;
           const done = (value) => { if (!settled) { settled = true; resolve(value); } };
-          dialog.innerHTML = `<form class="operations-form"><h2 id="vote-dialog-title">투표 삭제</h2><p>${escapeHtml(rules.pollTitle(poll))} 투표를 지웁니다. ${escapeHtml(rules.deleteSummary(refs))}</p><p class="meta">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><div class="home-actions"><button type="button" class="secondary" data-close>취소</button><button type="submit" class="btn-destructive">삭제</button></div></form>`;
+          dialog.innerHTML = `<form class="operations-form"><h2 id="vote-dialog-title">${escapeHtml(title)}</h2>${body}<div class="home-actions"><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">${escapeHtml(action)}</button></div></form>`;
           dialog.querySelector("[data-close]").onclick = () => dialog.close();
           dialog.querySelector("form").onsubmit = (event) => { event.preventDefault(); done(true); dialog.close(); };
           dialog.onclose = () => done(false);
           dialog.showModal();
         });
+      }
+      async function confirmDelete() {
+        const refs = await ExicanData.pollReferences(poll.id);
+        return confirmAction("투표 삭제", `<p>${escapeHtml(rules.pollTitle(poll))} 투표를 지웁니다. ${escapeHtml(rules.deleteSummary(refs))}</p><p class="meta">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p>`, "삭제");
       }
       async function loadPoll(preferredId = poll?.id) {
         const request = ++version;
@@ -256,11 +260,12 @@
         const missingLink = linkedId && !upcoming.some((row) => row.id === linkedId);
         initialPollLink = false;
         polls = upcoming;
+        if (upcoming.some((row) => row.match_date === cancelledWeeklyDate)) cancelledWeeklyDate = null;
         poll = selected;
         votes = ballot;
         message.hidden = Boolean(poll) && !missingLink;
         message.textContent = missingLink ? "링크의 투표를 찾을 수 없어 현재 투표를 보여 줍니다" : "";
-        if (!poll) message.textContent += `${missingLink ? " · " : ""}아직 열린 투표가 없습니다. 일요일 13:00에 자동 생성됩니다.`;
+        if (!poll) message.textContent += `${missingLink ? " · " : ""}아직 열린 투표가 없습니다.${cancelledWeeklyDate === rules.nextSaturday(rules.kstDate(new Date())) ? "" : " 일요일 13:00에 자동 생성됩니다."}`;
         render();
       }
 
@@ -280,13 +285,27 @@
         votes = votes.filter((vote) => vote.member_id !== saved.member_id).concat(saved);
         showToast(`${member.name} · ${saved.choice === "attend" ? "참석" : "불참"}으로 저장했습니다${saved.is_late ? " · 지각 투표" : ""}`);
       })));
-      cancel.addEventListener("click", () => {
-        const checked = !poll.cancelled;
+      cancel.addEventListener("click", async () => {
+        if (!poll || busy) return;
+        const target = poll;
+        const checked = !target.cancelled;
+        const beforeConfirm = version;
+        if (checked && !await confirmAction("투표 취소", `<p>${escapeHtml(rules.pollHeading(target))} 투표를 숨깁니다. 투표·벌금 기록은 남고, 관리 → 투표에서 취소 해제할 수 있습니다. 이번 주 자동 생성은 이 날짜를 다시 만들지 않습니다.</p>`, "투표 취소")) return;
+        if (beforeConfirm !== version) return;
         mutate(async () => {
           const request = version;
-          await ExicanData.setPollCancelled(poll.id, checked);
+          await ExicanData.setPollCancelled(target.id, checked);
           if (request !== version) return;
+          if (checked && target.match_date === rules.nextSaturday(rules.kstDate(new Date()))) cancelledWeeklyDate = target.match_date;
           await loadPoll();
+          if (checked) {
+            message.hidden = false;
+            message.textContent = `${rules.pollDateLabel(target)} 투표를 취소했습니다. 되돌리려면 `;
+            const link = document.createElement("a");
+            link.href = pageUrl("admin.html?tab=polls");
+            link.textContent = "관리 → 투표";
+            message.append(link, "에서 취소 해제");
+          }
           showToast(checked ? "투표를 취소했습니다" : "투표 취소를 해제했습니다");
         });
       });

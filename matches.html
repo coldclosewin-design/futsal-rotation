@@ -49,6 +49,8 @@
   <script src="js/polls.js"></script>
   <script src="js/member.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/ledger-rules.js"></script>
+  <script src="js/data-ledger.js"></script>
   <script src="js/attendance-rules.js"></script>
   <script src="js/data-admin.js"></script>
   <script src="js/parse-title.js"></script>
@@ -84,6 +86,7 @@
       let modal = null;
       const drafts = new Map();
       const reacting = new Set();
+      const openAdmin = new Set(), openSms = new Set();
       function readStorage(key) {
         try { return JSON.parse(localStorage.getItem(key)); }
         catch (error) { return null; }
@@ -266,7 +269,7 @@
           label.textContent = detail.title;
           const sub = document.createElement("span");
           sub.className = "row-sub";
-          sub.textContent = detail.sub;
+          sub.textContent = detail.sub + (Number.isFinite(match.score_us) && Number.isFinite(match.score_them) ? "" : " · 스코어 미입력");
           main.append(label, sub);
           const end = document.createElement("div");
           end.className = "row-end";
@@ -389,6 +392,11 @@
         const form = document.createElement("form");
         form.className = "candidate-form";
         const id = row.article_id;
+        details.open = openAdmin.has(id);
+        details.addEventListener("toggle", () => {
+          if (!details.isConnected) return;
+          if (details.open) openAdmin.add(id); else openAdmin.delete(id);
+        });
         form.innerHTML = `
           <label for="phone-${id}">연락처</label><input id="phone-${id}" name="phone" type="tel" autocomplete="off">
           <div class="match-field-grid">
@@ -401,6 +409,12 @@
           <button type="submit" class="primary">저장</button>
           <div class="home-actions"><button type="button" class="secondary" data-copy>문자 문구 복사</button><a class="button" data-sms>문자 앱 열기</a></div>
           <details class="sms-preview"><summary>문자 문구 미리보기</summary><p></p></details>`;
+        const preview = form.querySelector(".sms-preview");
+        preview.open = openSms.has(id);
+        preview.addEventListener("toggle", () => {
+          if (!preview.isConnected) return;
+          if (preview.open) openSms.add(id); else openSms.delete(id);
+        });
         if (!drafts.has(id)) drafts.set(id, { phone: row.phone || "", memo: row.memo || "", our_priority: row.our_priority ?? "",
           cost: costs[id] ?? "", contact_status: row.contact_status || "new" });
         const draft = drafts.get(id);
@@ -493,6 +507,7 @@
           <div class="match-field-grid"><div><label for="confirm-cost">구장비 (원)</label><input id="confirm-cost" name="cost" type="number" min="0" max="2147483647" step="1" required></div>
           <div><label for="confirm-format">포맷</label><select id="confirm-format" name="format" required><option value="">선택</option><option>5v5</option><option>6v6</option></select></div></div>
           <label for="confirm-memo">메모</label><textarea id="confirm-memo" name="memo" rows="2"></textarea></fieldset>
+          <label><input name="record_venue" type="checkbox" checked> 구장비를 장부에 바로 기록(팀 지출)</label>
           <p class="auth-error" role="alert"></p><button class="primary" type="submit">매치 등록</button><button class="secondary" type="button" data-close>취소</button></form>`;
         const form = backdrop.querySelector("form");
         const submit = form.querySelector("[type=submit]");
@@ -506,6 +521,10 @@
         for (const key of ["match_date", "start_time", "end_time", "venue", "opponent", "cost", "format", "memo"]) {
           form.elements[key].value = initial[key] ?? "";
         }
+        const venueCheck = form.elements.record_venue;
+        const syncVenueCheck = () => { venueCheck.disabled = saving || !(Number(form.elements.cost.value) > 0); };
+        form.elements.cost.addEventListener("input", syncVenueCheck);
+        syncVenueCheck();
         if (savedMatch) {
           fieldset.disabled = true;
           form.querySelector(".match-help").textContent = "이미 등록된 매치입니다. 후보의 확정 상태를 다시 저장할 수 있습니다.";
@@ -537,10 +556,13 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           if (saving) return;
+          const recordVenue = venueCheck.checked && !venueCheck.disabled;
           saving = true;
+          syncVenueCheck();
           submit.disabled = true;
           cancel.disabled = true;
           form.querySelector(".auth-error").textContent = "";
+          let ledgerWarning = "";
           try {
             await requireAdmin();
             if (!savedMatch) {
@@ -556,18 +578,27 @@
             }
             fieldset.disabled = true;
             await requireAdmin();
+            if (recordVenue && savedMatch.cost > 0) {
+              try {
+                await ExicanData.addLedger({ member_id: null, category: "venue_fee", amount: -savedMatch.cost,
+                  ref_match_id: savedMatch.id, settled: true, entry_date: savedMatch.match_date,
+                  note: `${savedMatch.venue || "구장 미정"} 구장비` });
+              } catch (error) {
+                if (String(error.code) !== "23505") ledgerWarning = `매치는 등록됐지만 구장비 기록은 실패했습니다: ${error.message}`;
+              }
+            }
             const updated = await ExicanData.updateCandidate(row.article_id, api.buildCandidatePatch({ ...draft, contact_status: "confirmed" }, new Date().toISOString()));
             Object.assign(row, updated, { parsed_date: row.parsed_date, weekday: row.weekday });
             drafts.delete(row.article_id);
             state.close();
             renderCards();
-            showToast("매치 등록됨");
+            showToast(ledgerWarning || "매치 등록됨");
           } catch (error) {
-            const description = savedMatch ? `매치는 등록되었습니다. 후보 상태 저장을 다시 시도하세요: ${error.message}` : error.message;
+            const description = (ledgerWarning ? `${ledgerWarning}. ` : "") + (savedMatch ? `매치는 등록되었습니다. 후보 상태 저장을 다시 시도하세요: ${error.message}` : error.message);
             form.querySelector(".auth-error").textContent = description;
             showToast(description);
             if (savedMatch) { fieldset.disabled = true; submit.textContent = "상태 저장 다시 시도"; }
-          } finally { saving = false; submit.disabled = false; cancel.disabled = false; }
+          } finally { saving = false; submit.disabled = false; cancel.disabled = false; syncVenueCheck(); }
         });
       }
 
