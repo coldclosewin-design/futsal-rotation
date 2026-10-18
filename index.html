@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FC EXICAN 운영 허브</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="home-page">
   <h1>FC EXICAN 운영 허브</h1>
@@ -100,7 +100,7 @@
         const today = ExicanRules.kstDate(now);
         const saturday = ExicanRules.nextSaturday(today);
         const days = Math.round((Date.parse(`${saturday}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
-        const date = saturday.slice(5).split("-").map(Number).join("/");
+        const date = ExicanRules.displayDate(saturday);
         // 보드의 투표 세그먼트는 이번 주 토요일 정기 투표 기준(특별 투표가 먼저 있어도 "없음"이 되지 않도록).
         const weekly = weeklyPoll?.match_date === saturday ? weeklyPoll : poll?.match_date === saturday ? poll : null;
         const pollTag = weekly && ExicanRules.pollStatus(weekly, now) === "open" ?
@@ -110,8 +110,8 @@
           pollState === "signed-out" ? "로그인 필요" : pollState === "error" ? "확인 필요" : "확인 중";
         const confirmed = matchState === "ready" ? confirmedDates.includes(saturday) ? "확정" : "없음" :
           matchState === "signed-out" ? "로그인 필요" : matchState === "error" ? "확인 필요" : "확인 중";
-        get("home-week").textContent = `이번 주 ${date}(토) ${days ? `D-${days}` : "D-day"} · 투표 ${status} · 매치 ${confirmed}`;
-        get("home-week-date").textContent = `${date} 토`;
+        get("home-week").textContent = `이번 주 ${date} ${days ? `D-${days}` : "D-day"} · 투표 ${status} · 매치 ${confirmed}`;
+        get("home-week-date").textContent = date;
         get("home-dday").textContent = days ? `D-${days}` : "D-day";
         const segment = (id, text, lit, dim) => {
           const node = get(id);
@@ -186,7 +186,7 @@
         myVote.textContent = myVote.hidden ? "" : savedVote ?
           `내 투표: ${savedVote.choice === "attend" ? "참석" : "불참"} · ${ExicanRules.formatRelative(savedVote.updated_at, new Date().toISOString())}` : "아직 투표하지 않았습니다";
         if (weeklyPoll) {
-          const deadline = new Date(weeklyPoll.closes_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+          const deadline = ExicanRules.displayDate(ExicanRules.kstDate(weeklyPoll.closes_at)) + " " + new Date(weeklyPoll.closes_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false });
           const status = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[ExicanRules.pollStatus(weeklyPoll, new Date().toISOString())];
           get("home-poll-count").textContent = String(pollSummary.count);
           get("weekly-poll-summary").textContent = `마감 ${deadline} · ${status}`;
@@ -199,7 +199,7 @@
         const specials = upcoming.filter((row) => ExicanRules.isSpecialPoll(row) && row.id !== weeklyPoll?.id);
         const specialLink = get("home-special-polls");
         specialLink.hidden = upcoming.length < 2 || !specials.length;
-        const specialTitle = specials.length ? specials[0].title ? `${specials[0].match_date.slice(5).split("-").map(Number).join("/")} ${specials[0].title}` : ExicanRules.pollTitle(specials[0]) : "";
+        const specialTitle = specials.length ? ExicanRules.pollHeading(specials[0]) : "";
         specialLink.textContent = specials.length ? `특별 투표 ${specials.length}개 · ${specialTitle}` : "";
         specialLink.href = pollUrl(specials[0]?.id);
 
@@ -217,7 +217,7 @@
             for (const row of ranked) {
               const item = document.createElement("li");
               const date = document.createElement("span");
-              date.textContent = ExicanCandidates.describeSchedule(row);
+              date.textContent = row.parsed_date ? ExicanCandidates.describeSchedule(row).replace(/^\d+\/\d+\(.\)/, ExicanRules.displayDate(row.parsed_date)) : ExicanCandidates.describeSchedule(row);
               const link = document.createElement("a");
               link.href = EXICAN_CONFIG.CAFE.ARTICLE_URL(row.article_id, row.menu_id);
               link.target = "_blank"; link.rel = "noopener";
@@ -241,7 +241,7 @@
             const link = document.createElement("a");
             link.id = "home-match-link";
             link.href = pageUrl("matches.html#confirmed-matches");
-            link.textContent = ExicanCandidates.describeMatch(nextMatch);
+            link.textContent = ExicanCandidates.describeMatch(nextMatch).replace(ExicanRules.pollDateLabel(nextMatch), ExicanRules.displayDate(nextMatch.match_date));
             const hint = document.createElement("span");
             hint.className = "board-link-hint";
             hint.textContent = "상세";
@@ -249,7 +249,7 @@
             get("home-match").replaceChildren(link);
           }
         } else get("home-match").textContent = "확정 매치를 불러오지 못했습니다. 다시 시도하세요.";
-        get("home-rotation-link").querySelector(".row-action").textContent = nextMatch ? `${nextMatch.match_date.slice(5).split("-").map(Number).join("/")} 배정표 만들기` : "배정표 만들기";
+        get("home-rotation-link").querySelector(".row-action").textContent = nextMatch ? `${ExicanRules.displayDate(nextMatch.match_date)} 배정표 만들기` : "배정표 만들기";
 
         const month = ExicanLedgerRules.monthOf(today);
         const mine = get("ledger-my-summary");

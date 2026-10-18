@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>풋살 배정</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>키퍼·휴식 배정</h1>
@@ -13,7 +13,7 @@
   <main class="rotation-page page-grid">
     <div id="rotation-member" class="identity-line page-wide"></div>
     <section class="board page-board" aria-label="배정 요약">
-      <div class="board-row"><div><p class="label">키퍼·휴식 배정</p><p id="rotation-board-date" class="board-title">오늘</p></div><p id="rotation-count" class="display" aria-label="선택된 참가자 수">0</p></div>
+      <div class="board-row"><div><p class="label">키퍼·휴식 배정</p><p id="rotation-board-date" class="board-title">오늘</p></div><p class="display board-count"><span id="rotation-count">0</span><small>명 선택</small></p></div>
       <div class="segments">
         <div class="segment"><span class="label">포맷</span><b id="rotation-format">5v5</b></div>
         <div id="rotation-min-segment" class="segment is-dim"><span class="label">최소 인원</span><b id="rotation-minimum">5명 필요</b></div>
@@ -101,7 +101,7 @@
       document.getElementById("rotation-min-segment").classList.toggle("is-dim", count < minimum);
       document.getElementById("rotation-connection").textContent = integration.connected ? "팀 연결" : "수동 배정";
       const boardDate = integration.connected ? match?.match_date || integration.poll?.match_date : null;
-      document.getElementById("rotation-board-date").textContent = boardDate ? ExicanRules.pollTitle({ match_date: boardDate }).replace(" 경기", "").replace(/\((.)\)$/, " $1") : "오늘";
+      document.getElementById("rotation-board-date").textContent = boardDate ? ExicanRules.displayDate(boardDate) : "오늘";
     }
     document.getElementById("rotation-match").addEventListener("change", updateRotationBoard);
     // TOTAL_QUARTERS는 rotation.js 에서 전역으로 선언되어 있으므로 여기서는 재선언 안 함
@@ -407,7 +407,7 @@
       integration.matches = (await ExicanData.matches({ from: ExicanRules.kstDate(new Date()) })).filter((match) => match.status === "scheduled");
       const select = document.getElementById("rotation-match");
       const selected = select.value || integration.matches.find((match) => match.match_date === integration.poll?.match_date)?.id;
-      select.innerHTML = integration.matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selected ? "selected" : ""}>${escapeHtml(match.match_date)} ${escapeHtml(match.start_time.slice(0, 5))} · ${escapeHtml(match.venue || "구장 미정")}</option>`).join("");
+      select.innerHTML = integration.matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selected ? "selected" : ""}>${escapeHtml(ExicanRules.displayDate(match.match_date))} ${escapeHtml(match.start_time.slice(0, 5))} · ${escapeHtml(match.venue || "구장 미정")}</option>`).join("");
       updateRotationBoard();
       document.getElementById("save-rotation").disabled = !integration.matches.length;
       document.getElementById("rotation-save-message").textContent = integration.matches.length ? "생성한 배정표를 선택한 매치에 저장합니다." : "저장할 예정 매치가 없습니다.";

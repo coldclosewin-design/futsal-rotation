@@ -38,6 +38,7 @@
 
   /* 타이포 3단계 */
   --fs-body: 15px;
+  --fs-heading: 22px;
   --fs-label: 12px;
   --fs-display: clamp(36px, 10vw, 56px);
   --lh-body: 1.55;
@@ -720,37 +721,24 @@ tbody th { font-weight: 600; }
 /* 016: 지난 경기의 승리 결과만 점등한다. */
 #match-history .chip[data-result="win"] { border-color: var(--lit); color: var(--lit-ink); background: var(--lit-wash); }
 
-/* 017: 투표 보드 "경기 일시" 줄(라벨은 data-label), 회장 도구의 취소·삭제 버튼 짝. */
+/* 020: 보드 제목·숫자 단위, 투표 현황과 관리 카드의 공통 위계. */
 .board-line[data-label]::before { content: attr(data-label); }
-.board-line .board-sub { display: block; margin-top: 2px; font-size: var(--fs-label); font-weight: 500; color: var(--board-muted); }
-.rollout-page .home-actions .btn-destructive { grid-column: auto; margin-top: 0; }
-
-/* 018: 투표 현황 색 구분, 보드 날짜 확대와 큰 숫자 라벨. */
-.vote-member-list li[data-choice="attend"] { background: var(--lit-wash); border-color: var(--lit); color: var(--lit-ink); }
-.vote-member-list li[data-choice="absent"] { background: transparent; border-style: dashed; color: var(--ink-4); }
-.vote-member-list li[data-choice="absent"] time { color: var(--ink-4); }
-.home-board .board-title, .vote-page .board-title { font-size: clamp(22px, 6vw, 28px); letter-spacing: -0.02em; line-height: 1.15; }
-.board-count { display: flex; align-items: baseline; gap: 6px; margin: 0; }
+.board-line .board-sub { display: block; margin-top: 2px; font-size: var(--fs-label); font-weight: 600; color: var(--board-muted); }
+.vote-member-list li[data-choice="attend"] { color: var(--ink); border-color: var(--seam-strong); background: var(--panel-solid); }
+.vote-member-list li[data-choice="absent"] { background: transparent; border-style: dashed; color: var(--ink-3); }
+.vote-member-list li[data-choice="absent"] time { color: var(--ink-3); }
+.page-board .board-title, .home-board .board-title { font-size: var(--fs-heading); letter-spacing: -0.02em; line-height: 1.15; }
+.board-count { display: flex; align-items: baseline; gap: 6px; margin: 0; flex-shrink: 0; white-space: nowrap; }
 .board-count small { font-size: var(--fs-label); font-weight: 600; color: var(--board-muted); letter-spacing: 0; white-space: nowrap; }
-
-/* 019: 관리 투표 카드(날짜 크게·상태 칩·집계 칩), 멤버 표 사용자 정의 열. */
-.poll-card-date { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 2px; font-size: clamp(22px, 6vw, 28px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
+.poll-card-date { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 2px; font-size: var(--fs-heading); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
 .operations-poll[data-status="cancelled"] .poll-card-date, .operations-poll[data-status="closed"] .poll-card-date { color: var(--ink-3); }
 .operations-poll[data-status="cancelled"] .poll-card-date { text-decoration: line-through; }
-.operations-poll h3 { margin: 0 0 6px; }
+.operations-poll h3 { margin: 0 0 6px; font-size: var(--fs-body); font-weight: 700; color: var(--ink); }
 .poll-status[data-status="closed"], .poll-status[data-status="scheduled"] { color: var(--ink-3); }
-.vote-counts { margin: 10px 0; }
-.vote-counts li { font-size: var(--fs-body); }
+.operations-poll .segments { margin: 10px 0; background: var(--seam); border: var(--hair); }
+.operations-poll .segment { background: var(--panel-solid); animation: none; }
+.operations-poll .segment b { color: var(--ink); }
 .operations-poll details .vote-member-list { margin-top: 8px; }
-.operations-col-remove { width: auto; min-width: 0; min-height: 24px; margin: 0 0 0 4px; padding: 0 7px; font-size: var(--fs-label); line-height: 1; color: var(--ink-3); border-style: dashed; vertical-align: middle; }
-.operations-col-remove:hover { color: var(--ink); border-style: solid; }
-.operations-table th.operations-custom-col { color: var(--ink-2); }
-
-/* 019b: 멤버 표 정렬 — 열 삭제 ×는 작게 머리글 글자에 맞추고, 남는 너비는 마지막(편집) 열이 흡수해 열 간격을 고르게. */
 .operations-table thead th { vertical-align: middle; }
-.rollout-page .operations-table .operations-col-remove, .operations-table .operations-col-remove { min-height: 20px; height: 20px; padding: 0 6px; margin: 0 0 0 4px; font-size: 11px; line-height: 18px; vertical-align: middle; }
 .operations-table th:last-child, .operations-table td:last-child { width: 100%; }
-
-/* 018 */
-.vote-member-list li[data-choice="absent"],
-.vote-member-list li[data-choice="absent"] time { color: var(--ink-3); }
+.rollout-page .column-manager .row-action { min-height: 36px; padding: 6px 12px; background: var(--panel-solid); border: var(--hair); color: var(--ink); }

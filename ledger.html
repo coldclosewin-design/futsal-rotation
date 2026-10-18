@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>장부 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>회비·벌금 장부</h1>
@@ -35,7 +35,7 @@
         <p>이름이나 행을 누르면 항목을 펼칩니다. 음수 미납은 팀에서 받을 돈입니다.</p>
         <div class="rules-table-scroll" role="region" aria-label="멤버별 장부 표" tabindex="0">
           <table class="ledger-table">
-            <thead><tr><th scope="col">이름</th><th scope="col">회비</th><th scope="col">면제</th><th scope="col">벌금</th><th scope="col">환급·지원</th><th scope="col">납부</th><th scope="col">미납</th></tr></thead>
+            <thead><tr><th scope="col">이름</th><th scope="col">미납</th><th scope="col">회비</th><th scope="col">면제</th><th scope="col">벌금</th><th scope="col">환급·지원</th><th scope="col">납부</th></tr></thead>
             <tbody id="member-ledger"></tbody>
           </table>
         </div>
@@ -151,7 +151,7 @@
       const month = () => get("ledger-month").value;
       const monthRows = () => rows.filter((row) => rules.monthOf(row.entry_date) === month());
       const nameOf = (id) => members.find((person) => person.id === id)?.name || id || "팀";
-      const matchLabel = (match) => `${match.match_date} ${(match.start_time || "").slice(0, 5)} · ${match.venue || match.location || "공식 경기"}`;
+      const matchLabel = (match) => `${ExicanRules.displayDate(match.match_date)} ${(match.start_time || "").slice(0, 5)} · ${match.venue || match.location || "공식 경기"}`;
 
       function entryHtml(row) {
         const label = rules.CATEGORY_LABELS[row.category] || row.category;
@@ -162,7 +162,7 @@
 
       function claimHtml(claim, admin) {
         const match = matches.find((item) => item.id === claim.match_id);
-        const submittedDate = claim.created_at ? ExicanRules.kstDate(claim.created_at) : "";
+        const submittedDate = claim.created_at ? ExicanRules.displayDate(ExicanRules.kstDate(claim.created_at)) : "";
         const actions = admin && claim.status === "pending" ? `<div class="claim-actions"><button type="button" class="primary" data-review="${escapeHtml(claim.id)}" data-status="approved" data-write>승인</button><button type="button" class="btn-destructive" data-review="${escapeHtml(claim.id)}" data-status="rejected" data-write>거절</button></div>` : "";
         return `<li class="row claim-row"><div class="claim-summary"><span class="row-main"><span class="row-label">${escapeHtml(nameOf(claim.buyer_id))}</span><span class="row-sub">${escapeHtml(claim.items || "품목 없음")}</span></span><span class="row-figure">${formatWon(claim.amount)}</span></div><span class="row-sub">${escapeHtml(match ? matchLabel(match) : "매치 정보 없음")} · ${escapeHtml(submittedDate)}</span><span class="ledger-claim-status">${statusLabel[claim.status] || "상태 확인 필요"}</span>${actions}</li>`;
       }
@@ -184,7 +184,7 @@
           const id = `ledger-detail-${person.id}`;
           const outstanding = total.outstanding < 0 ? `받을 돈 ${formatWon(-total.outstanding)}` : formatWon(total.outstanding);
           const settleAll = isAdmin() && entries.some((row) => !row.settled) ? `<button type="button" class="secondary" data-settle-member="${escapeHtml(person.id)}" data-write>${escapeHtml(person.name)} 전부 정산</button>` : "";
-          return `<tr data-member="${escapeHtml(person.id)}"><th scope="row"><button type="button" class="ledger-expand" data-expand="${escapeHtml(person.id)}" aria-controls="${escapeHtml(id)}" aria-expanded="${expanded.has(person.id)}">${escapeHtml(person.name)} ${icon(expanded.has(person.id) ? "up" : "down", 16)}</button></th><td>${formatWon(total.due)}</td><td>${formatWon(total.exempt)}</td><td>${formatWon(total.fine)}</td><td>${formatWon(total.refund)}</td><td>${formatWon(total.settled)}</td><td class="ledger-outstanding ${total.outstanding < 0 ? "ledger-refund" : total.outstanding > 0 ? "lit-dot" : ""}">${outstanding}</td></tr>
+          return `<tr data-member="${escapeHtml(person.id)}"><th scope="row"><button type="button" class="ledger-expand" data-expand="${escapeHtml(person.id)}" aria-controls="${escapeHtml(id)}" aria-expanded="${expanded.has(person.id)}">${escapeHtml(person.name)} ${icon(expanded.has(person.id) ? "up" : "down", 16)}</button></th><td class="ledger-outstanding ${total.outstanding < 0 ? "ledger-refund" : total.outstanding > 0 ? "lit-dot" : ""}">${outstanding}</td><td>${formatWon(total.due)}</td><td>${formatWon(total.exempt)}</td><td>${formatWon(total.fine)}</td><td>${formatWon(total.refund)}</td><td>${formatWon(total.settled)}</td></tr>
             <tr id="${escapeHtml(id)}" ${expanded.has(person.id) ? "" : "hidden"}><td colspan="7" class="ledger-details">${settleAll}<table class="ledger-entry-table"><caption>${escapeHtml(person.name)} ${escapeHtml(month())} 항목</caption><thead><tr><th scope="col">날짜</th><th scope="col">항목</th><th scope="col">금액</th><th scope="col">메모</th><th scope="col">정산 여부</th></tr></thead><tbody>${entries.map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 기록이 없습니다.</td></tr>"}</tbody></table></td></tr>`;
         }).join("") || "<tr><td colspan=\"7\">표시할 멤버가 없습니다.</td></tr>";
         get("team-ledger").innerHTML = currentRows.filter((row) => row.member_id == null).map(entryHtml).join("") || "<tr><td colspan=\"5\">이번 달 팀 지출이 없습니다.</td></tr>";
