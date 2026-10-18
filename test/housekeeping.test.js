@@ -52,6 +52,14 @@ test("해당 토요일 투표가 이미 있으면 생성하지 않는다", async
   assert.ok(context.logs.includes("poll: exists"));
 });
 
+test("해당 토요일 투표가 취소 상태로 남아 있으면 재생성하지 않고 취소 로그로 구분한다", async () => {
+  const context = harness({ polls: [{ ...fixture.polls[0], cancelled: true }] });
+  assert.equal(await main([], context.deps), 0);
+  assert.equal(context.calls.filter((call) => call.table === "polls" && call.method === "POST").length, 0);
+  assert.ok(context.logs.includes("poll: exists (cancelled — 관리자에서 취소 해제 필요)"));
+  assert.equal(context.logs.includes("poll: exists"), false);
+});
+
 test("투표 창(월 13:00)이 이미 지났으면 소급 생성하지 않는다", async () => {
   const context = harness({ now: "2026-10-17T23:59:59+09:00" });
   assert.equal(await main([], context.deps), 0);

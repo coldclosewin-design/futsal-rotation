@@ -39,7 +39,8 @@ async function main(argv = process.argv.slice(2), {
     }
 
     const existing = await rest.select("polls", { match_date: `eq.${matchDate}`, order: "id.asc" });
-    if (existing.length) report("poll: exists");
+    // 취소된 행도 match_date unique 때문에 남아 있다. 회장이 그 주 경기를 취소한 뜻일 수 있으니 자동 재생성하지 않고 로그만 구분한다.
+    if (existing.length) report(existing.some((poll) => poll.cancelled) ? "poll: exists (cancelled — 관리자에서 취소 해제 필요)" : "poll: exists");
     else if (new Date(nowIso) > new Date(window.closes_at)) report(`poll: window passed (${matchDate}), skip`);
     else if (new Date(nowIso) >= new Date(window.opens_at)) {
       await write("polls", [{ match_date: matchDate, ...window }], "match_date");

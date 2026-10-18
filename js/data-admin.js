@@ -119,11 +119,17 @@
     await requireAdmin();
     if (api.mode() !== "demo") return original.createPoll(matchDate, { title, opens_at, closes_at, fines });
     const data = await demoData();
-    if (data.polls.some((row) => row.match_date === matchDate)) throw new Error("해당 날짜의 투표가 이미 있습니다");
     const defaults = window.ExicanRules.pollWindow(matchDate);
     const row = { id: `demo-poll-${matchDate}`, match_date: matchDate, title, fines,
       opens_at: opens_at === undefined ? defaults.opens_at : opens_at,
       closes_at: closes_at === undefined ? defaults.closes_at : closes_at, cancelled: false };
+    const existing = data.polls.find((poll) => poll.match_date === matchDate);
+    if (existing) {
+      // 취소된 투표는 숨김 상태라 같은 날짜로 다시 만들면 새 옵션으로 되살린다(공용 모듈의 live 동작과 동일).
+      if (!existing.cancelled) throw new Error("해당 날짜의 투표가 이미 있습니다");
+      const { id, match_date, ...patch } = row;
+      return copy(Object.assign(existing, patch));
+    }
     data.polls.push(row);
     return copy(row);
   }

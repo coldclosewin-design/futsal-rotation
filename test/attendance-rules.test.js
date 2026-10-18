@@ -132,6 +132,19 @@ describe("data-admin 저장 계약", () => {
     assert.equal((await data.upcomingPolls()).find((row) => row.id === added.id).title, options.title);
     await assert.rejects(() => data.createPoll("2099-10-28"), /해당 날짜의 투표가 이미 있습니다/);
   });
+  test("관리 데모에서 취소된 같은 날짜 투표는 다시 만들면 새 옵션으로 되살아난다", async () => {
+    const data = environment();
+    const added = await data.createPoll("2099-10-28", { title: "취소될 경기", fines: false });
+    await data.cancelPoll(added.id, true);
+    assert.equal((await data.upcomingPolls()).some((row) => row.id === added.id), false);
+    const revived = await data.createPoll("2099-10-28", { title: "다시 여는 경기" });
+    assert.equal(revived.id, added.id);
+    assert.equal(revived.cancelled, false);
+    assert.equal(revived.title, "다시 여는 경기");
+    assert.equal(revived.fines, true);
+    assert.equal((await data.polls()).filter((row) => row.match_date === "2099-10-28").length, 1);
+    assert.equal((await data.upcomingPolls()).find((row) => row.id === added.id).title, "다시 여는 경기");
+  });
   test("출석 upsert는 누락 멤버를 삭제하지 않음", async () => {
     const data = environment();
     await data.saveAttendance("demo-ledger-match-1", [{ member_id: "m01", status: "late" }]);

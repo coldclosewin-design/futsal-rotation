@@ -23,7 +23,7 @@ function environment({ clock = now, live = false, role = "admin", respond = () =
       const call = { table, operations: [] };
       calls.push(call);
       const query = { then: (resolve, reject) => Promise.resolve(respond(call)).then(resolve, reject) };
-      for (const name of ["select", "gte", "eq", "order", "range", "insert", "single"]) {
+      for (const name of ["select", "gte", "eq", "order", "range", "insert", "update", "single"]) {
         query[name] = (...args) => { call.operations.push([name, ...args]); return query; };
       }
       return query;
@@ -75,7 +75,24 @@ test("기존 생성 API 기본 창과 임의 옵션·복사 격리·날짜 중�
   for (const [key, value] of Object.entries(options)) assert.equal(special[key], value);
   special.title = "외부 수정";
   assert.equal((await data.upcomingPolls(now)).find((row) => row.id === special.id).title, options.title);
+  await assert.rejects(() => data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
+});
+
+test("데모 생성은 취소된 같은 날짜 투표를 새 옵션으로 되살린다", async () => {
+  const { data } = environment();
+  const special = await data.createPoll("2026-10-21", { title: "수요일", fines: false });
   await data.setPollCancelled(special.id, true);
+  assert.equal((await data.upcomingPolls(now)).some((row) => row.id === special.id), false);
+  const revived = await data.createPoll("2026-10-21", { title: "다시 여는 수요일", closes_at: "2026-10-20T18:00:00+09:00" });
+  assert.equal(revived.id, special.id);
+  assert.equal(revived.cancelled, false);
+  assert.equal(revived.title, "다시 여는 수요일");
+  assert.equal(revived.fines, true);
+  assert.equal(revived.closes_at, "2026-10-20T18:00:00+09:00");
+  assert.equal(revived.opens_at, rules.pollWindow("2026-10-21").opens_at);
+  const listed = (await data.upcomingPolls(now)).filter((row) => row.match_date === "2026-10-21");
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].title, "다시 여는 수요일");
   await assert.rejects(() => data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
 });
 
@@ -97,11 +114,39 @@ test("live 생성은 insert 옵션 보존·23505 안내·회장 권한 검사를
   const row = await data.createPoll("2026-10-21", options);
   for (const [key, value] of Object.entries(options)) assert.equal(row[key], value);
   assert.equal(calls.length, 1);
-  const duplicate = environment({ live: true, respond: () => ({ error: { code: "23505" } }) });
+  const duplicate = environment({ live: true, respond: (call) => call.operations.some(([name]) => name === "insert") ? { error: { code: "23505" } } : { data: [{ id: 1, match_date: "2026-10-21", cancelled: false }] } });
   await assert.rejects(() => duplicate.data.createPoll("2026-10-21"), /해당 날짜의 투표가 이미 있습니다/);
+  assert.deepEqual(duplicate.calls.map((call) => call.operations[0][0]), ["insert", "select"]);
   const team = environment({ live: true, role: "team" });
   await assert.rejects(() => team.data.createPoll("2026-10-21"), /회장 로그인/);
   assert.equal(team.calls.length, 0);
+});
+
+test("live 생성은 23505 뒤 같은 날짜 행이 취소 상태면 update로 되살리고 아니면 중복 오류다", async () => {
+  const cancelled = { id: 42, match_date: "2026-10-24", title: "옛 제목", fines: false, cancelled: true,
+    opens_at: "2026-10-01T00:00:00+09:00", closes_at: "2026-10-02T13:00:00+09:00" };
+  const respond = (row) => (call) => {
+    const op = (name) => call.operations.find(([key]) => key === name);
+    if (op("insert")) return { error: { code: "23505" } };
+    if (op("update")) return { data: { ...row, ...op("update")[1] } };
+    return { data: [row] };
+  };
+  const options = { title: "새 제목", closes_at: "2026-10-23T18:00:00+09:00" };
+  const { data, calls } = environment({ live: true, respond: respond(cancelled) });
+  const revived = await data.createPoll("2026-10-24", options);
+  assert.deepEqual(revived, { ...cancelled, ...options, fines: true, cancelled: false, opens_at: rules.pollWindow("2026-10-24").opens_at });
+  assert.deepEqual(calls.map((call) => call.table), ["polls", "polls", "polls"]);
+  assert.deepEqual(calls[1].operations, [["select", "*"], ["eq", "match_date", "2026-10-24"]]);
+  const [update, where, ...rest] = calls[2].operations;
+  // vm 컨텍스트에서 만든 객체는 prototype이 달라 복사해 비교한다.
+  assert.deepEqual([update[0], { ...update[1] }], ["update", { title: "새 제목", fines: true, cancelled: false, opens_at: rules.pollWindow("2026-10-24").opens_at, closes_at: options.closes_at }]);
+  assert.deepEqual(where, ["eq", "id", 42]);
+  assert.deepEqual(rest, [["select"], ["single"]]);
+  const active = environment({ live: true, respond: respond({ ...cancelled, cancelled: false }) });
+  await assert.rejects(() => active.data.createPoll("2026-10-24"), /해당 날짜의 투표가 이미 있습니다/);
+  assert.equal(active.calls.length, 2);
+  const missing = environment({ live: true, respond: (call) => call.operations.some(([name]) => name === "insert") ? { error: { code: "23505" } } : { data: [] } });
+  await assert.rejects(() => missing.data.createPoll("2026-10-24"), /해당 날짜의 투표가 이미 있습니다/);
 });
 
 test("모달 기본값은 전날 13시와 토요일에만 벌금을 적용하며 연도 경계도 처리한다", () => {

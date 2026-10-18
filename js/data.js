@@ -124,16 +124,27 @@ window.ExicanData = (() => {
       closes_at: closes_at === undefined ? defaults.closes_at : closes_at, cancelled: false };
     if (mode() === "demo") {
       const data = await demoData();
-      if (data.polls.some((poll) => poll.match_date === matchDate)) throw new Error("해당 날짜의 투표가 이미 있습니다");
+      const existing = data.polls.find((poll) => poll.match_date === matchDate);
+      if (existing) return copy(Object.assign(existing, revivePatch(existing, row)));
       row.id = `demo-poll-${matchDate}`;
       data.polls.push(row);
       return copy(row);
     }
     try { return await live((client) => client.from("polls").insert(row).select().single()); }
     catch (error) {
-      if (error.code === "23505") throw new Error("해당 날짜의 투표가 이미 있습니다");
-      throw error;
+      if (error.code !== "23505") throw error;
+      // 취소된 투표는 행이 남아 있어 같은 날짜 insert가 막힌다. 취소된 행이면 되살린다.
+      const [existing] = await live((client) => client.from("polls").select("*").eq("match_date", matchDate));
+      const patch = revivePatch(existing, row);
+      return live((client) => client.from("polls").update(patch).eq("id", existing.id).select().single());
     }
+  }
+
+  // 같은 날짜의 취소된 투표를 새 옵션(cancelled=false 포함)으로 되살리는 갱신 내용. 취소되지 않은 행이면 중복 오류.
+  function revivePatch(existing, row) {
+    if (!existing || !existing.cancelled) throw new Error("해당 날짜의 투표가 이미 있습니다");
+    const { match_date, ...patch } = row;
+    return patch;
   }
 
   async function setPollCancelled(pollId, cancelled) {
