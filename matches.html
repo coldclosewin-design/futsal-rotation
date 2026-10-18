@@ -5,18 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019c">
+  <link rel="stylesheet" href="styles.css?v=20261019d">
 </head>
 <body class="rollout-page">
   <h1>매칭</h1>
   <main class="matches-page">
     <div id="match-member" class="member-badge identity-line"></div>
     <section class="board page-board" aria-label="매칭 후보 요약">
-      <div class="board-row"><div><p class="label">매칭 후보 · 이번 주 토요일 오전(전체)</p></div><p class="display board-count"><span id="matches-total">—</span><small>건 후보</small></p></div>
+      <div class="board-row"><div><p class="label">매칭 후보 · 토요일 오전(전체 주)</p></div><p class="display board-count"><span id="matches-total">—</span><small>건 후보</small></p></div>
       <div class="segments">
         <div id="matches-fresh-segment" class="segment"><span class="label">새 후보 · 미분류</span><b id="matches-fresh">—</b></div>
-        <div class="segment"><span class="label">마감 포함</span><b id="matches-closed">제외</b></div>
+        <div id="matches-seen-segment" class="segment"><span class="label">마지막 수집</span><b id="matches-seen">—</b></div>
         <div class="segment"><span class="label">내 추천</span><b id="matches-mine">—</b></div>
+      </div>
+      <div class="board-lines">
+        <p id="matches-saturday" class="board-line" data-label="이번 주 토요일" aria-live="polite">—</p>
       </div>
     </section>
     <section class="match-filters card" aria-label="후보 필터">
@@ -190,14 +193,42 @@
         namesButton.title = button.title;
       }
       function renderBoard() {
-        const defaults = api.filterCandidates(rows, { ...api.DEFAULT_FILTERS, staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today(), new Date().toISOString());
-        const now = Date.now();
+        if (!message.hidden) {
+          for (const id of ["matches-total", "matches-fresh", "matches-seen", "matches-mine", "matches-saturday"]) {
+            document.getElementById(id).textContent = "—";
+          }
+          document.getElementById("matches-fresh-segment").classList.remove("is-lit");
+          document.getElementById("matches-seen-segment").classList.remove("is-dim");
+          return null;
+        }
+        const nowIso = new Date().toISOString();
+        const now = Date.parse(nowIso);
+        const status = api.candidateStatus(rows, today(), nowIso, { staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS });
+        const defaults = api.filterCandidates(rows, { ...api.DEFAULT_FILTERS, staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today(), nowIso);
         const fresh = [...defaults.ranked, ...defaults.unparsed].filter((row) => now - Date.parse(row.first_seen_at) >= 0 && now - Date.parse(row.first_seen_at) < 86400000).length;
         document.getElementById("matches-total").textContent = defaults.ranked.length;
         document.getElementById("matches-fresh").textContent = `${fresh}건 · ${defaults.unparsed.length}건`;
         document.getElementById("matches-fresh-segment").classList.toggle("is-lit", fresh > 0);
-        document.getElementById("matches-closed").textContent = filters.includeClosed ? "포함" : "제외";
+        const delayed = status.lastSeenAt && now - Date.parse(status.lastSeenAt) > 3 * 3600000;
+        const seen = document.getElementById("matches-seen");
+        seen.textContent = status.lastSeenAt ? ExicanRules.formatRelative(status.lastSeenAt, nowIso) : "확인 불가";
+        document.getElementById("matches-seen-segment").classList.toggle("is-dim", !status.lastSeenAt || delayed);
+        if (delayed) {
+          const tag = document.createElement("small");
+          tag.textContent = "지연";
+          seen.append(" ", tag);
+        }
         document.getElementById("matches-mine").textContent = `${reactions.filter((reaction) => reaction.member_id === member?.id && rows.some((row) => String(row.article_id) === String(reaction.article_id))).length}건`;
+        const saturday = document.getElementById("matches-saturday");
+        saturday.textContent = `${ExicanRules.displayDate(status.saturday)} · 매물 ${status.total}건` +
+          (status.total ? ` · 오전 ${status.morning}건 · 마감 ${status.total - status.open}건` : "");
+        if (!status.total || !status.morningOpen) {
+          const sub = document.createElement("span");
+          sub.className = "board-sub";
+          sub.textContent = !status.total ? "아직 올라온 매물이 없습니다 · 보통 수~금에 올라옵니다" : "기본 필터(오전 · 마감 제외)에 맞는 글은 없습니다";
+          saturday.appendChild(sub);
+        }
+        return status;
       }
       function renderConfirmed() {
         const upcoming = !demo && role === "anon" ? [] : knownMatches
@@ -368,7 +399,7 @@
         return card;
       }
       function renderCards() {
-        renderBoard();
+        const status = renderBoard();
         const result = api.filterCandidates(rows, { ...filters, staleHours: EXICAN_CONFIG.CANDIDATE_STALE_HOURS }, today(), new Date().toISOString());
         document.getElementById("candidate-count").textContent = `후보 ${result.ranked.length}건 (미분류 ${result.unparsed.length}건)`;
         const ranked = document.getElementById("ranked-candidates");
@@ -378,7 +409,7 @@
         document.getElementById("unparsed-section").hidden = !result.unparsed.length;
         if (!result.ranked.length && !result.unparsed.length && message.hidden) {
           const empty = document.createElement("p");
-          empty.textContent = "조건에 맞는 후보가 없습니다. 필터를 변경해 보세요.";
+          empty.textContent = api.candidateEmptyMessage(status, filters);
           ranked.appendChild(empty);
         }
       }
@@ -642,7 +673,8 @@
               const offset = Date.now() - latest - 3600000;
               rows = rows.map((row) => {
                 const seen = Date.parse(row.first_seen_at || row.write_ts);
-                return { ...row, first_seen_at: Number.isFinite(seen) ? new Date(seen + offset).toISOString() : row.first_seen_at };
+                const firstSeenAt = Number.isFinite(seen) ? new Date(seen + offset).toISOString() : row.first_seen_at;
+                return { ...row, first_seen_at: firstSeenAt, last_seen_at: row.last_seen_at || firstSeenAt };
               });
             }
           }

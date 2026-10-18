@@ -4,11 +4,96 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { runInNewContext } = require("node:vm");
 const api = require("../js/candidates.js");
+const rules = require("../js/rules.js");
 const fixture = require("./fixtures/demo-data.json");
 const titles = require("./fixtures/cafe-titles.json");
 const today = "2026-10-15";
 const rows = api.shiftDemoDates(fixture.match_candidates, today);
 const base = rows.find((row) => row.article_id === 2589474);
+
+const statusToday = "2026-10-19";
+const statusNow = "2026-10-19T09:00:00.000Z";
+const statusRow = { parsed_date: "2026-10-24", weekday: "토", start_hour: 8, parse_ok: true,
+  is_closed: false, contact_status: "new", last_seen_at: "2026-10-19T08:00:00.000Z" };
+
+test("candidateStatus: 수요일 글만 있어도 전체 행의 마지막 수집 시각을 반환한다", () => {
+  assert.deepEqual(api.candidateStatus([{ ...statusRow, parsed_date: "2026-10-21", weekday: "수" }], statusToday, statusNow), {
+    lastSeenAt: statusRow.last_seen_at, saturday: "2026-10-24", total: 0, morning: 0, open: 0, morningOpen: 0
+  });
+});
+
+test("candidateStatus: 토요일 오후 글은 전체·미마감 수에만 포함한다", () => {
+  assert.deepEqual(api.candidateStatus([{ ...statusRow, start_hour: 13 }], statusToday, statusNow), {
+    lastSeenAt: statusRow.last_seen_at, saturday: "2026-10-24", total: 1, morning: 0, open: 1, morningOpen: 0
+  });
+});
+
+test("candidateStatus: 마감 포함 집계와 순서에 무관한 최대 수집 시각, 입력 불변", () => {
+  const inputs = Object.freeze([
+    Object.freeze({ ...statusRow, last_seen_at: "2026-10-19T15:00:00+09:00" }),
+    Object.freeze({ ...statusRow, is_closed: true, last_seen_at: "2026-10-19T17:30:00+09:00" }),
+    Object.freeze({ ...statusRow, start_hour: 13 })
+  ]);
+  const before = JSON.stringify(inputs);
+  const expected = { lastSeenAt: "2026-10-19T08:30:00.000Z", saturday: "2026-10-24", total: 3, morning: 2, open: 2, morningOpen: 1 };
+  assert.deepEqual(api.candidateStatus(inputs, statusToday, statusNow), expected);
+  assert.deepEqual(api.candidateStatus([...inputs].reverse(), statusToday, statusNow), expected);
+  assert.equal(JSON.stringify(inputs), before);
+});
+
+test("candidateStatus: 수집 시각 없음·무효, 시간 미정·미분류와 빈 배열", () => {
+  assert.deepEqual(api.candidateStatus([
+    { ...statusRow, start_hour: 0, last_seen_at: undefined },
+    { ...statusRow, start_hour: null, parse_ok: false, last_seen_at: "invalid" }
+  ], statusToday, statusNow), {
+    lastSeenAt: null, saturday: "2026-10-24", total: 2, morning: 1, open: 2, morningOpen: 1
+  });
+  assert.deepEqual(api.candidateStatus([], statusToday, statusNow), {
+    lastSeenAt: null, saturday: "2026-10-24", total: 0, morning: 0, open: 0, morningOpen: 0
+  });
+});
+
+test("candidateStatus: 지난 토요일·73시간 된 미연락 글은 제외하고 72시간 경계·연락한 글은 유지한다", () => {
+  const hoursAgo = (hours) => new Date(Date.parse(statusNow) - hours * 3600000).toISOString();
+  const inputs = [
+    { ...statusRow, parsed_date: "2026-10-17", last_seen_at: statusNow },
+    { ...statusRow, last_seen_at: hoursAgo(73) },
+    { ...statusRow, last_seen_at: hoursAgo(72) },
+    { ...statusRow, last_seen_at: hoursAgo(73), contact_status: "contacted" },
+    { ...statusRow, parsed_date: "2026-10-31" }
+  ];
+  assert.deepEqual(api.candidateStatus(inputs, statusToday, statusNow), {
+    lastSeenAt: statusNow, saturday: "2026-10-24", total: 2, morning: 2, open: 2, morningOpen: 2
+  });
+  assert.equal(api.candidateStatus(inputs, statusToday, statusNow, { staleHours: 74 }).total, 3);
+  assert.equal(api.candidateStatus(inputs, statusToday, statusNow, { staleHours: 1 }).total, 1);
+});
+
+test("candidateStatus: 이번 토요일 계산은 오늘 토요일·월말·연말에도 nextSaturday와 같다", () => {
+  for (const date of ["2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-31", "2026-12-31"]) {
+    assert.equal(api.candidateStatus([], date, statusNow).saturday, rules.nextSaturday(date));
+  }
+  assert.equal(api.candidateStatus([], "2026-10-24", statusNow).saturday, "2026-10-24");
+});
+
+test("candidateEmptyMessage: 매물 없음·오후만·오전 전부 마감·지역과 포맷 안내 우선순위", () => {
+  const status = { saturday: "2026-10-24", total: 3, morning: 2, open: 2, morningOpen: 1 };
+  const cases = [
+    [{ ...status, total: 0, morning: 0, morningOpen: 0 }, {}, "이번 주 토요일(10/24) 매물이 아직 없습니다. 보통 수~금에 올라옵니다."],
+    [{ ...status, total: 1, morning: 0, morningOpen: 0 }, {}, "이번 주 토요일 매물 1건 중 오전 경기는 없습니다. '오전만'을 끄면 보입니다."],
+    [{ ...status, morningOpen: 0 }, {}, "이번 주 토요일 오전 매물 2건은 모두 마감되었습니다. '마감 포함'을 켜면 보입니다."],
+    [status, { menuIds: [625], formats: ["5v5"] }, "조건에 맞는 후보가 없습니다. 지역·포맷 필터를 확인해 보세요."]
+  ];
+  for (const [input, filters, expected] of cases) {
+    assert.equal(api.candidateEmptyMessage(input, { ...api.DEFAULT_FILTERS, ...filters }), expected);
+  }
+  const fallback = cases[3][2];
+  assert.equal(api.candidateEmptyMessage({ ...status, morning: 0 }, { ...api.DEFAULT_FILTERS, morningOnly: false }), fallback);
+  assert.equal(api.candidateEmptyMessage({ ...status, morningOpen: 0 }, { ...api.DEFAULT_FILTERS, includeClosed: true }), fallback);
+  assert.equal(api.candidateEmptyMessage({ ...status, morningOpen: 0 }, { ...api.DEFAULT_FILTERS, saturdayOnly: false }), fallback);
+  const nextYear = { ...status, saturday: "2027-01-02", total: 0 };
+  assert.ok(api.candidateEmptyMessage(nextYear, api.DEFAULT_FILTERS).includes(`(${rules.displayDate(nextYear.saturday, { weekday: false })})`));
+});
 
 const historyMatch = { match_date: "2026-10-10", start_time: "08:00", venue: "도봉풋살장",
   opponent: "테스트 FC", format: "6v6", status: "played", score_us: 4, score_them: 3, attendance_count: 7 };

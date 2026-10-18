@@ -49,6 +49,39 @@
     return { ranked, unparsed };
   }
 
+  function candidateStatus(rows, todayKst, nowIso, { staleHours = 72 } = {}) {
+    const today = new Date(`${todayKst}T00:00:00Z`);
+    const saturday = new Date(today.getTime() + (6 - today.getUTCDay() + 7) % 7 * 86400000).toISOString().slice(0, 10);
+    const latest = rows.reduce((maximum, row) => {
+      const seen = Date.parse(row.last_seen_at);
+      return Number.isFinite(seen) ? Math.max(maximum, seen) : maximum;
+    }, -Infinity);
+    const all = filterCandidates(rows, { menuIds: null, formats: null, saturdayOnly: false, morningOnly: false,
+      includeClosed: true, includeUnparsed: true, staleHours }, todayKst, nowIso);
+    const saturdayRows = [...all.ranked, ...all.unparsed].filter((row) => row.parsed_date === saturday);
+    const morningRows = saturdayRows.filter((row) => row.start_hour != null && row.start_hour < 12);
+    return {
+      lastSeenAt: Number.isFinite(latest) ? new Date(latest).toISOString() : null,
+      saturday, total: saturdayRows.length, morning: morningRows.length,
+      open: saturdayRows.filter((row) => !row.is_closed).length,
+      morningOpen: morningRows.filter((row) => !row.is_closed).length
+    };
+  }
+
+  function candidateEmptyMessage(status, filters) {
+    if (status.total === 0) {
+      const [, month, day] = status.saturday.split("-").map(Number);
+      return `이번 주 토요일(${month}/${day}) 매물이 아직 없습니다. 보통 수~금에 올라옵니다.`;
+    }
+    if (filters.saturdayOnly && filters.morningOnly && status.morning === 0) {
+      return `이번 주 토요일 매물 ${status.total}건 중 오전 경기는 없습니다. '오전만'을 끄면 보입니다.`;
+    }
+    if (filters.saturdayOnly && !filters.includeClosed && status.morningOpen === 0 && status.morning > 0) {
+      return `이번 주 토요일 오전 매물 ${status.morning}건은 모두 마감되었습니다. '마감 포함'을 켜면 보입니다.`;
+    }
+    return "조건에 맞는 후보가 없습니다. 지역·포맷 필터를 확인해 보세요.";
+  }
+
   function describeSchedule(row) {
     if (!row.parsed_date) return "일정 미분류";
     const [, month, day] = row.parsed_date.split("-");
@@ -129,7 +162,7 @@
       poll_id: poll?.match_date === date ? poll.id : null, status: "scheduled" };
   }
 
-  const api = { DEFAULT_FILTERS, STATUS_LABELS, normalizeFilters, filterCandidates, describeSchedule, nextStatus,
+  const api = { DEFAULT_FILTERS, STATUS_LABELS, normalizeFilters, filterCandidates, candidateStatus, candidateEmptyMessage, describeSchedule, nextStatus,
     shiftDemoDates, describeMatch, describeMatchDetail, describeHistory, buildCandidatePatch, buildMatchRow };
   if (typeof window !== "undefined") window.ExicanCandidates = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
