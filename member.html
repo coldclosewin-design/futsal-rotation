@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>멤버 현황 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>내 현황</h1>
   <main class="operations-page member-page">
     <label id="member-picker" class="member-switch identity-line" hidden>다른 멤버 보기<select id="member-select"></select></label>
     <section class="board page-board" aria-label="내 현황 요약">
-      <div class="board-row"><div><p id="member-board-month" class="label">이번 달 미납</p><p id="member-board-name" class="board-title">멤버 확인 중</p></div><p id="member-outstanding" class="display">—</p></div>
+      <div class="board-row"><div><p id="member-board-month" class="label">이번 달 미납</p><p id="member-board-name" class="board-title">멤버 확인 중</p></div><p class="display board-count"><span id="member-outstanding">—</span><small>원</small></p></div>
       <div class="segments">
         <div class="segment"><span class="label">12주 참석률</span><b id="member-rate">—</b></div>
         <div class="segment"><span class="label">투표 참여율</span><b id="member-vote-rate">—</b></div>
@@ -76,8 +76,8 @@
           const voted = eligiblePolls.filter((poll) => votes.some((vote) => vote.poll_id === poll.id && vote.member_id === selected)).length;
           const rotation = rules.rotationTotals(history, selected);
           get("member-board-name").textContent = person.name;
-          get("member-board-month").textContent = `${month} · ${total.outstanding < 0 ? "환급 대기" : "이번 달 미납"}`;
-          get("member-outstanding").textContent = total.outstanding < 0 ? `받을 돈 ${formatWon(-total.outstanding)}` : formatWon(total.outstanding);
+          get("member-board-month").textContent = `${month} · ${total.outstanding < 0 ? "받을 돈" : "이번 달 미납"}`;
+          get("member-outstanding").textContent = Math.abs(total.outstanding).toLocaleString("ko-KR");
           get("member-rate").textContent = rate.rate === null ? "기록 없음" : `${Math.round(rate.rate * 100)}%`;
           get("member-vote-rate").textContent = eligiblePolls.length ? `${Math.round(voted / eligiblePolls.length * 100)}%` : "기록 없음";
           get("member-gk").textContent = `${rotation.gk}회`;
@@ -85,7 +85,7 @@
           get("member-select").innerHTML = people.map((row) => `<option value="${e(row.id)}" ${row.id === selected ? "selected" : ""}>${e(row.name)}</option>`).join("");
           get("member-picker").hidden = false;
           get("member-content").innerHTML = `<section class="card"><h2>${e(month)} 납부</h2><dl class="rows flat-rows">${[["회비", total.due], ["벌금", total.fine], ["면제", total.exempt], ["환급", total.refund], ["정산 완료", total.settled], ["전 기간 미정산", outstanding]].map(([label, amount]) => `<div class="row"><dt class="row-label">${label}</dt><dd class="row-figure">${formatWon(amount)}</dd></div>`).join("")}</dl></section>
-            <section class="rows" aria-label="벌금 이력"><h2 class="row">벌금 이력 · 최근 20건</h2>${fines.map((row) => `<div class="row"><span class="row-main"><time class="row-label" datetime="${e(row.entry_date)}">${e(row.entry_date)}</time><span class="row-sub">${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${row.settled ? "정산 완료" : "미정산"}</span></span><span class="row-figure">${formatWon(row.amount)}</span></div>`).join("") || '<p class="row">기록 없음</p>'}</section>
+            <section class="rows" aria-label="벌금 이력"><h2 class="row">벌금 이력 · 최근 20건</h2>${fines.map((row) => `<div class="row"><span class="row-main"><time class="row-label" datetime="${e(row.entry_date)}">${e(ExicanRules.displayDate(row.entry_date))}</time><span class="row-sub">${e(ExicanLedgerRules.CATEGORY_LABELS[row.category])} · ${row.settled ? "정산 완료" : "미정산"}</span></span><span class="row-figure">${formatWon(row.amount)}</span></div>`).join("") || '<p class="row">기록 없음</p>'}</section>
             <section class="card"><h2>최근 12주 참여</h2><div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">완료 경기 출석</span><span class="row-sub">지각·경기 후 도착도 출석으로 집계</span></span><span class="row-figure">${rate.attended}/${rate.polled}회</span></div><div class="row"><span class="row-label">투표 참여</span><span class="row-figure">${voted}/${eligiblePolls.length}회</span></div></div></section>
             <section class="rows" aria-label="배정 누적"><h2 class="row">배정 누적</h2>${[["경기 수", rotation.matches], ["키퍼", rotation.gk], ["휴식", rotation.rest], ["키퍼·휴식 쿼터", rotation.outQuarters]].map(([label, count]) => `<div class="row"><span class="row-label">${label}</span><span class="row-figure">${count}회</span></div>`).join("")}<p class="row row-sub">경기당 평균 · 키퍼 ${rotation.matches ? (rotation.gk / rotation.matches).toFixed(1) : "0"}회 / 휴식 ${rotation.matches ? (rotation.rest / rotation.matches).toFixed(1) : "0"}회</p></section>`;
           get("member-message").hidden = true;

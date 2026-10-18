@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>참석 투표 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>참석 투표</h1>
@@ -39,8 +39,8 @@
     </section>
     <section id="admin-panel" class="card" aria-labelledby="admin-title" hidden>
       <h2 id="admin-title">회장 도구</h2>
-      <div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">새 경기 투표</span><span class="row-sub">정기 경기·공휴일·이벤트</span></span><button class="row-action" type="button" id="create-poll">투표 만들기</button></div><a class="row" id="admin-polls-link" href="admin.html?tab=polls"><span class="row-main"><span class="row-label">관리 → 투표</span><span class="row-sub">최근 8주 투표 목록 · 취소 해제 · 삭제</span></span><span class="row-action">열기</span></a></div>
-      <div class="home-actions"><button class="btn-destructive" type="button" id="poll-cancel">투표 취소</button><button class="btn-destructive" type="button" id="poll-delete">투표 삭제</button></div>
+      <div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">새 경기 투표</span><span class="row-sub">정기 경기·공휴일·이벤트</span></span><button class="row-action" type="button" id="create-poll">투표 만들기</button></div><a class="row" id="admin-polls-link" href="admin.html?tab=polls"><span class="row-main"><span class="row-label">관리 → 투표</span><span class="row-sub">최근 8주 투표 목록 · 취소 해제 · 삭제</span></span><span class="row-action">열기</span></a><div class="row"><span class="row-main"><span class="row-label">투표 취소</span><span class="row-sub">이번 경기 없음 · 기록 유지</span></span><button class="row-action" type="button" id="poll-cancel">취소</button></div></div>
+      <button class="btn-destructive" type="button" id="poll-delete">투표 삭제</button>
       <p class="meta">취소는 "이번 경기 없음"(기록 유지), 삭제는 잘못 만든 투표를 지우는 것입니다. 삭제하면 투표·벌금 기록이 함께 지워지고 매치는 연결만 풀립니다.</p>
     </section>
     <dialog id="vote-dialog" class="operations-dialog" aria-labelledby="vote-dialog-title"></dialog>
@@ -93,7 +93,7 @@
         document.getElementById("admin-panel").hidden = !admin;
         document.getElementById("admin-title").textContent = demo ? "회장 도구 · 데모" : "회장 도구";
         cancel.disabled = !poll || busy;
-        cancel.textContent = poll?.cancelled ? "투표 취소 해제" : "투표 취소";
+        cancel.textContent = poll?.cancelled ? "해제" : "취소";
         remove.disabled = !poll || busy;
         create.disabled = busy;
         const switcher = document.getElementById("poll-switch");
@@ -113,7 +113,7 @@
         polls.forEach((row, index) => {
           const button = switcher.children[index];
           const status = { open: "진행 중", scheduled: "예정", closed: "마감" }[rules.pollStatus(row, now)];
-          button.textContent = `${rules.pollTitle(row)} · ${status}`;
+          button.textContent = `${rules.pollHeading(row)} · ${status}`;
           button.setAttribute("aria-pressed", String(row.id === poll?.id));
           button.disabled = busy;
         });
@@ -147,7 +147,7 @@
         const hours = Math.floor(remaining % 1440 / 60);
         const duration = days ? `D-${days} · ${hours}시간` : hours ? `${hours}시간 ${remaining % 60}분` : `${remaining}분`;
         deadline.textContent = status === "cancelled" ? "취소" : status === "closed" ? "마감" : duration;
-        deadline.title = `${ExicanPollForm.formatTime(poll.closes_at)} 마감 (한국 시간)`;
+        deadline.title = `${rules.displayDate(rules.kstDate(poll.closes_at)) + " " + ExicanPollForm.formatTime(poll.closes_at).slice(11)} 마감 (한국 시간)`;
         if (member) ExicanMember.renderBadge(document.getElementById("member-badge"), member, async () => {
           ExicanMember.clear();
           member = await ExicanMember.ensure(members);
@@ -159,8 +159,8 @@
           button.disabled = busy || !member || (!demo && role === "anon") || status === "scheduled" || status === "cancelled";
         }
         document.getElementById("vote-notice").textContent = status === "closed" ? poll.fines === false ? "마감된 투표입니다. 미투표·지각 투표 벌금은 없습니다" : "마감 후 투표는 벌금 대상입니다" :
-          status === "scheduled" ? `${ExicanPollForm.formatTime(poll.opens_at)}부터 투표할 수 있습니다 (한국 시간)` :
-          status === "cancelled" ? "취소된 투표에는 참여할 수 없습니다" : `마감 ${ExicanPollForm.formatTime(poll.closes_at)} (한국 시간) · 마감 전까지 참석 여부를 변경할 수 있습니다`;
+          status === "scheduled" ? `${rules.displayDate(rules.kstDate(poll.opens_at)) + " " + ExicanPollForm.formatTime(poll.opens_at).slice(11)}부터 투표할 수 있습니다 (한국 시간)` :
+          status === "cancelled" ? "취소된 투표에는 참여할 수 없습니다" : `마감 ${rules.displayDate(rules.kstDate(poll.closes_at)) + " " + ExicanPollForm.formatTime(poll.closes_at).slice(11)} (한국 시간) · 마감 전까지 참석 여부를 변경할 수 있습니다`;
         const summary = rules.attendanceSummary(votes, members);
         document.getElementById("poll-count").textContent = summary.count;
         document.getElementById("poll-formats").textContent = Object.entries(summary.formats).filter(([, info]) => info.ok).map(([format]) => format).join(" · ") || "인원 부족";
@@ -239,7 +239,7 @@
         return new Promise((resolve) => {
           let settled = false;
           const done = (value) => { if (!settled) { settled = true; resolve(value); } };
-          dialog.innerHTML = `<form class="operations-form"><h2 id="vote-dialog-title">${escapeHtml(title)}</h2>${body}<div class="home-actions"><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">${escapeHtml(action)}</button></div></form>`;
+          dialog.innerHTML = `<form class="operations-form"><h2 id="vote-dialog-title">${escapeHtml(title)}</h2>${body}<button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">${escapeHtml(action)}</button></form>`;
           dialog.querySelector("[data-close]").onclick = () => dialog.close();
           dialog.querySelector("form").onsubmit = (event) => { event.preventDefault(); done(true); dialog.close(); };
           dialog.onclose = () => done(false);
@@ -248,7 +248,7 @@
       }
       async function confirmDelete() {
         const refs = await ExicanData.pollReferences(poll.id);
-        return confirmAction("투표 삭제", `<p>${escapeHtml(rules.pollTitle(poll))} 투표를 지웁니다. ${escapeHtml(rules.deleteSummary(refs))}</p><p class="meta">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p>`, "삭제");
+        return confirmAction("투표 삭제", `<p>${escapeHtml(rules.pollHeading(poll))} 투표를 지웁니다. ${escapeHtml(rules.deleteSummary(refs))}</p><p class="meta">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p>`, "삭제");
       }
       async function loadPoll(preferredId = poll?.id) {
         const request = ++version;
@@ -300,7 +300,7 @@
           await loadPoll();
           if (checked) {
             message.hidden = false;
-            message.textContent = `${rules.pollDateLabel(target)} 투표를 취소했습니다. 되돌리려면 `;
+            message.textContent = `${rules.displayDate(target.match_date)} 투표를 취소했습니다. 되돌리려면 `;
             const link = document.createElement("a");
             link.href = pageUrl("admin.html?tab=polls");
             link.textContent = "관리 → 투표";

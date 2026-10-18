@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>팀 관리 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>팀 관리</h1>
@@ -111,17 +111,17 @@
         panel.className = tab === "members" ? "section" : "operations-panel";
         if (tab === "members") {
           const columns = data.memberColumns(members);
-          panel.innerHTML = `<h2>멤버</h2><p class="operations-hint">members.json은 오프라인 폴백용입니다. 이 화면의 변경은 팀 데이터에 반영됩니다.</p><div class="home-actions"><button type="button" data-new-member>새 멤버</button><button type="button" class="secondary" data-add-column>열 추가</button></div><p class="operations-hint">표를 좌우로 밀어 연락처와 계좌를 확인하세요. 열 추가로 만든 열(예: 포지션, 등번호)은 멤버 편집에서 값을 넣고, 열 이름 옆 ×로 지웁니다.</p><div class="operations-scroll" tabindex="0" role="region" aria-label="멤버 목록"><table class="operations-table"><thead><tr>${["이름", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌"].map((label) => `<th scope="col">${label}</th>`).join("")}${columns.map((column) => `<th scope="col" class="operations-custom-col">${e(column)} <button type="button" class="operations-col-remove" data-remove-column="${e(column)}" aria-label="${e(column)} 열 삭제" title="열 삭제">×</button></th>`).join("")}<th scope="col">편집</th></tr></thead><tbody>${members.map((person) => `<tr class="${person.active ? "" : "operations-inactive"}"><th scope="row">${e(person.name)}</th><td>${person.active ? "활동" : "비활성"}</td><td>${person.is_president ? "회장" : "—"}</td><td>${e(person.joined_at || "—")}</td><td>${e(person.injury_from || "—")} ~ ${e(person.injury_to || "—")}</td><td>${e(person.phone || "—")}</td><td>${e(person.bank_account || "—")}</td>${columns.map((column) => `<td>${e(person.extra?.[column] || "—")}</td>`).join("")}<td><button type="button" data-edit-member="${e(person.id)}">${e(person.name)} 편집</button></td></tr>`).join("")}</tbody></table></div>`;
+          panel.innerHTML = `<h2>멤버</h2><p class="operations-hint">members.json은 오프라인 폴백용입니다. 이 화면의 변경은 팀 데이터에 반영됩니다.</p><div class="home-actions"><button type="button" data-new-member>새 멤버</button><button type="button" class="secondary" data-manage-columns>열 관리</button></div><p class="operations-hint">표를 좌우로 밀어 연락처와 계좌를 확인하세요. 사용자 정의 열(예: 포지션, 등번호)은 열 관리에서 추가·삭제하고, 값은 멤버 편집에서 넣습니다.</p><div class="operations-scroll" tabindex="0" role="region" aria-label="멤버 목록"><table class="operations-table"><thead><tr>${["이름", "편집", "활동", "회장", "가입일", "부상 기간", "연락처", "계좌"].map((label) => `<th scope="col">${label}</th>`).join("")}${columns.map((column) => `<th scope="col" class="operations-custom-col">${e(column)}</th>`).join("")}</tr></thead><tbody>${members.map((person) => `<tr class="${person.active ? "" : "operations-inactive"}"><th scope="row">${e(person.name)}</th><td><button type="button" data-edit-member="${e(person.id)}">${e(person.name)} 편집</button></td><td>${person.active ? "활동" : "비활성"}</td><td>${person.is_president ? "회장" : "—"}</td><td>${e(person.joined_at ? ExicanRules.displayDate(person.joined_at) : "—")}</td><td>${e(person.injury_from ? ExicanRules.displayDate(person.injury_from) : "—")} ~ ${e(person.injury_to ? ExicanRules.displayDate(person.injury_to) : "—")}</td><td>${e(person.phone || "—")}</td><td>${e(person.bank_account || "—")}</td>${columns.map((column) => `<td>${e(person.extra?.[column] || "—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
         } else if (tab === "polls") {
           panel.innerHTML = `<h2>최근 8주 투표</h2><button type="button" data-create-poll>투표 만들기</button><p class="operations-hint">취소는 "이번 경기 없음"(기록 유지), 삭제는 잘못 만든 투표 제거입니다. 삭제하면 투표·벌금 기록이 함께 지워지고 매치는 연결만 풀립니다.</p><div class="page-grid">${polls.map((poll) => {
             const ballot = votes.filter((vote) => vote.poll_id === poll.id);
             const summary = ExicanRules.attendanceSummary(ballot, members);
             const statusKey = ExicanRules.pollStatus(poll, new Date().toISOString());
             const status = { scheduled: "예정", open: "진행 중", closed: "마감", cancelled: "취소" }[statusKey];
-            return `<article class="operations-poll" data-status="${statusKey}"><p class="poll-card-date">${e(ExicanRules.pollDateLabel(poll))} <span class="poll-status" data-status="${statusKey}">${status}</span></p><h3>${e(poll.title || "정기 경기")}</h3><div class="poll-badges">${ExicanRules.isSpecialPoll(poll) ? '<span class="chip">특별</span>' : ""}${poll.fines === false ? '<span class="chip">벌금 없음</span>' : ""}</div><p class="meta">경기 ${e(poll.match_date)} · 마감 ${e(ExicanPollForm.formatTime(poll.closes_at))} (한국 시간)</p><ul class="vote-member-list vote-counts" aria-label="투표 집계"><li data-choice="attend">참석 ${summary.attend.length}</li><li data-choice="absent">불참 ${summary.absent.length}</li><li data-choice="pending">미투표 ${summary.pending.length}</li></ul><details data-open-poll="${e(poll.id)}"><summary>멤버별 투표 보기</summary><ul class="vote-member-list">${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
+            return `<article class="operations-poll" data-status="${statusKey}"><p class="poll-card-date">${e(ExicanRules.displayDate(poll.match_date))} <span class="poll-status" data-status="${statusKey}">${status}</span></p><h3>${e(poll.title || "정기 경기")}</h3><div class="poll-badges">${ExicanRules.isSpecialPoll(poll) ? '<span class="chip">특별</span>' : ""}${poll.fines === false ? '<span class="chip">벌금 없음</span>' : ""}</div><p class="meta">경기 ${e(ExicanRules.displayDate(poll.match_date))} · 마감 ${e(ExicanRules.displayDate(ExicanRules.kstDate(poll.closes_at)) + " " + ExicanPollForm.formatTime(poll.closes_at).slice(11))} (한국 시간)</p><div class="segments" aria-label="투표 집계"><div class="segment"><span class="label">참석</span><b>${summary.attend.length}명</b></div><div class="segment"><span class="label">불참</span><b>${summary.absent.length}명</b></div><div class="segment ${summary.pending.length > 0 && statusKey === "open" ? "is-lit" : ""}"><span class="label">미투표</span><b>${summary.pending.length}명</b></div></div><details data-open-poll="${e(poll.id)}"><summary>멤버별 투표 보기</summary><ul class="vote-member-list">${members.filter((person) => person.active || ballot.some((vote) => vote.member_id === person.id)).map((person) => {
               const vote = ballot.find((row) => row.member_id === person.id);
               return `<li data-choice="${vote ? vote.choice : "pending"}">${e(person.name)}${vote?.is_late ? '<span class="late-badge">지각</span>' : ""}</li>`;
-            }).join("")}</ul></details>${poll.cancelled ? '<p class="operations-hint">취소 해제하면 투표가 다시 열립니다. 같은 날짜로 투표를 만들어도 취소가 해제됩니다.</p>' : ""}<div class="home-actions"><button type="button" class="btn-destructive" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "투표 취소 해제" : "투표 취소"}</button><button type="button" class="btn-destructive" data-delete-poll="${e(poll.id)}">투표 삭제</button></div></article>`;
+            }).join("")}</ul></details>${poll.cancelled ? '<p class="operations-hint">취소 해제하면 투표가 다시 열립니다. 같은 날짜로 투표를 만들어도 취소가 해제됩니다.</p>' : ""}<div class="rows flat-rows"><div class="row"><span class="row-main"><span class="row-label">투표 취소</span><span class="row-sub">이번 경기 없음 · 기록 유지</span></span><button type="button" class="row-action" data-cancel-poll="${e(poll.id)}">${poll.cancelled ? "해제" : "취소"}</button></div></div><button type="button" class="btn-destructive" data-delete-poll="${e(poll.id)}">투표 삭제</button></article>`;
           }).join("") || "<p>투표가 없습니다.</p>"}</div>`;
         } else {
           panel.innerHTML = `<h2>매치</h2><p class="operations-hint">출석 저장 후 벌금을 미리 보고 기록하세요.</p>${demo ? '<button type="button" data-ledger-preview>장부에서 기록 확인 (데모)</button><p class="operations-hint">이 화면의 데모 기록은 아래 장부 미리보기에서 확인할 수 있습니다. 새로고침하면 초기화됩니다.</p>' : '<nav class="rows"><a class="row" href="ledger.html"><span class="row-label">장부에서 기록 확인</span><span class="row-action">보기</span></a></nav>'}<div class="page-grid">${[["다가오는 매치", matches.filter((match) => match.match_date >= today())], ["지난 매치", matches.filter((match) => match.match_date < today()).reverse()]].map(([label, rows]) => `<section><h3 class="operations-list-title">${label}</h3>${rows.map(matchCard).join("") || "<p>매치가 없습니다.</p>"}</section>`).join("")}</div><div id="admin-ledger-preview"></div>`;
@@ -145,7 +145,7 @@
         const saved = attendances.get(match.id) || [];
         const ballot = votes.filter((vote) => vote.poll_id === match.poll_id);
         const people = members.filter((person) => person.active || saved.some((row) => row.member_id === person.id));
-        return `<article class="operations-match" data-match="${e(match.id)}"><h4>${e(match.match_date)} ${e(match.start_time?.slice(0, 5) || "")} · ${e(match.venue || "구장 미정")}</h4><p>${e(match.opponent || "상대 미정")} · ${e(match.format || "포맷 미정")} · ${formatWon(match.cost)} <span class="poll-status">${rules.MATCH_LABELS[match.status]}</span></p>
+        return `<article class="operations-match" data-match="${e(match.id)}"><h4>${e(ExicanRules.displayDate(match.match_date))} ${e(match.start_time?.slice(0, 5) || "")} · ${e(match.venue || "구장 미정")}</h4><p>${e(match.opponent || "상대 미정")} · ${e(match.format || "포맷 미정")} · ${formatWon(match.cost)} <span class="poll-status">${rules.MATCH_LABELS[match.status]}</span></p>
           <form data-match-form="${e(match.id)}" class="operations-form"><label>상태<select name="status">${Object.entries(rules.MATCH_LABELS).map(([value, label]) => option(value, label, match.status)).join("")}</select></label><div class="operations-pair"><label>우리 스코어<input name="score_us" type="number" min="0" max="2147483647" value="${match.score_us ?? ""}"></label><label>상대 스코어<input name="score_them" type="number" min="0" max="2147483647" value="${match.score_them ?? ""}"></label></div><label>구장비<input name="cost" type="number" min="0" max="2147483647" required value="${match.cost}"></label><label>메모<textarea name="memo">${e(match.memo || "")}</textarea></label><button type="submit">매치 저장</button></form>
           ${match.status === "played" || match.match_date <= today() ? `<details class="operations-attendance" data-open-attendance="${e(match.id)}"><summary>출석 기록</summary><p class="operations-hint">출석을 저장해도 경기 상태는 그대로입니다. 끝났으면 상태를 경기 완료로 바꾸세요.</p><form data-attendance-form="${e(match.id)}">${people.map((person) => {
             const existing = saved.find((row) => row.member_id === person.id);
@@ -176,6 +176,21 @@
         allowed = true;
         get("admin-gate").hidden = true;
         render();
+      }
+
+      function manageColumns() {
+        const columns = data.memberColumns(members);
+        modal(`<form class="operations-form column-manager"><h2 id="dialog-title">열 관리</h2><div class="rows flat-rows">${columns.map((column) => `<div class="row"><span class="row-label">${e(column)}</span><button type="button" class="row-action secondary" data-remove-column="${e(column)}" aria-label="${e(column)} 열 삭제">삭제</button></div>`).join("") || '<p class="operations-hint">아직 추가한 열이 없습니다</p>'}</div><label>새 열 이름<input name="column" required maxlength="20" placeholder="예: 포지션, 등번호"></label><p class="operations-hint">모든 멤버에게 빈 값으로 열이 생깁니다. 값은 멤버 편집에서 넣습니다.</p><p role="alert"></p><button type="submit">추가</button><button type="button" class="secondary" data-close>닫기</button></form>`,
+          (form) => write(async () => { await data.addMemberColumn(form.elements.column.value); return "열을 추가했습니다"; }));
+        dialog.querySelectorAll("[data-remove-column]").forEach((button) => {
+          button.onclick = () => {
+            if (busy) return;
+            const column = button.dataset.removeColumn;
+            modal(`<form class="operations-form"><h2 id="dialog-title">열 삭제</h2><p>"${e(column)}" 열과 모든 멤버의 값을 지웁니다. 되돌릴 수 없습니다.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">삭제</button></form>`,
+              () => write(async () => { await data.removeMemberColumn(column); return "열을 삭제했습니다"; }));
+            dialog.querySelector("[data-close]").onclick = () => { if (!busy) manageColumns(); };
+          };
+        });
       }
 
       function editMember(id) {
@@ -234,19 +249,11 @@
           if (button.dataset.deletePoll) {
             const poll = polls.find((row) => row.id === button.dataset.deletePoll);
             const refs = await data.pollReferences(poll.id);
-            modal(`<form class="operations-form"><h2 id="dialog-title">투표 삭제</h2><p>${e(ExicanRules.pollTitle(poll))} 투표를 지웁니다. ${e(ExicanRules.deleteSummary(refs))}</p><p class="operations-hint">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">삭제</button></form>`,
+            modal(`<form class="operations-form"><h2 id="dialog-title">투표 삭제</h2><p>${e(ExicanRules.pollHeading(poll))} 투표를 지웁니다. ${e(ExicanRules.deleteSummary(refs))}</p><p class="operations-hint">자동 생성 창(일요일 13:00~월요일 13:00) 안이면 다음 자동 작업이 같은 날짜 투표를 다시 만듭니다. 이번 경기를 안 하는 것이면 삭제 대신 취소를 쓰세요.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">삭제</button></form>`,
               () => write(async () => { await data.deletePoll(poll.id); return "투표를 삭제했습니다"; }));
           }
           if (button.hasAttribute("data-new-member")) editMember();
-          if (button.hasAttribute("data-add-column")) {
-            modal(`<form class="operations-form"><h2 id="dialog-title">열 추가</h2><label>열 이름<input name="column" required maxlength="20" placeholder="예: 포지션, 등번호"></label><p class="operations-hint">모든 멤버에게 빈 값으로 열이 생깁니다. 값은 멤버 편집에서 넣습니다.</p><p role="alert"></p><button type="submit">열 추가</button><button type="button" class="secondary" data-close>취소</button></form>`,
-              (form) => write(async () => { await data.addMemberColumn(form.elements.column.value); return "열을 추가했습니다"; }));
-          }
-          if (button.dataset.removeColumn) {
-            const column = button.dataset.removeColumn;
-            modal(`<form class="operations-form"><h2 id="dialog-title">열 삭제</h2><p>"${e(column)}" 열과 모든 멤버의 값을 지웁니다. 되돌릴 수 없습니다.</p><p role="alert"></p><button type="button" class="secondary" data-close>닫기</button><button type="submit" class="btn-destructive">열 삭제</button></form>`,
-              () => write(async () => { await data.removeMemberColumn(column); return "열을 삭제했습니다"; }));
-          }
+          if (button.hasAttribute("data-manage-columns")) manageColumns();
           if (button.dataset.editMember) editMember(button.dataset.editMember);
           if (button.hasAttribute("data-create-poll")) {
             const created = await ExicanPollForm.open();

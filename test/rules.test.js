@@ -106,9 +106,9 @@ test("pollTitle은 제목을 보존하고 없으면 실제 요일을 계산한�
 
 test("pollDateLabel·pollHeading은 제목이 있어도 날짜를 먼저 보여 준다", () => {
   assert.equal(rules.pollDateLabel({ match_date: "2026-10-24" }), "10/24(토)");
-  assert.equal(rules.pollHeading({ match_date: "2026-10-24", title: "정기 풋살" }), "10/24(토) 정기 풋살");
-  assert.equal(rules.pollHeading({ match_date: "2026-10-22", title: null }), "10/22(목) 경기");
-  assert.equal(rules.pollHeading({ match_date: "2027-01-01", title: "" }), "1/1(금) 경기");
+  assert.equal(rules.pollHeading({ match_date: "2026-10-24", title: "정기 풋살" }), "10/24 토 정기 풋살");
+  assert.equal(rules.pollHeading({ match_date: "2026-10-22", title: null }), "10/22 목 경기");
+  assert.equal(rules.pollHeading({ match_date: "2027-01-01", title: "" }), "1/1 금 경기");
 });
 
 test("longDate는 월·일·요일을 풀어 쓴다", () => {
@@ -196,3 +196,16 @@ for (const [input, expected] of [
   ["2026-10-15T09:00:00+09:00", "3시간 전"], [new Date("2026-10-13T12:00:00+09:00"), "2일 전"],
   ["2026-10-15T14:00:00+09:00", "2시간 후"], ["invalid", "시간 미상"]
 ]) test(`formatRelative → ${expected}`, () => assert.equal(rules.formatRelative(input, "2026-10-15T12:00:00+09:00"), expected));
+
+test("displayDate는 월·일과 실제 요일을 표시한다", () => {
+  assert.equal(rules.displayDate("2026-10-24"), "10/24 토");
+  assert.equal(rules.displayDate("2027-01-01"), "1/1 금");
+});
+
+test("displayDate는 윤년의 요일도 시간대와 무관하게 계산한다", () => {
+  assert.equal(rules.displayDate("2028-02-29"), "2/29 화");
+});
+
+test("displayDate는 weekday 옵션으로 요일을 생략한다", () => {
+  assert.equal(rules.displayDate("2026-10-24", { weekday: false }), "10/24");
+});

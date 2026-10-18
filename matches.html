@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261019a">
+  <link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body class="rollout-page">
   <h1>매칭</h1>
   <main class="matches-page">
     <div id="match-member" class="member-badge identity-line"></div>
     <section class="board page-board" aria-label="매칭 후보 요약">
-      <div class="board-row"><div><p class="label">매칭 후보</p><p class="board-title">이번 주 토요일 오전</p></div><p id="matches-total" class="display" aria-label="기본 필터 후보 수">—</p></div>
+      <div class="board-row"><div><p class="label">매칭 후보 · 이번 주 토요일 오전(전체)</p></div><p class="display board-count"><span id="matches-total">—</span><small>건 후보</small></p></div>
       <div class="segments">
         <div id="matches-fresh-segment" class="segment"><span class="label">새 후보 · 미분류</span><b id="matches-fresh">—</b></div>
         <div class="segment"><span class="label">마감 포함</span><b id="matches-closed">제외</b></div>
@@ -218,7 +218,7 @@
           const sub = document.createElement("span");
           sub.className = "row-sub";
           const detail = api.describeMatchDetail(match);
-          label.textContent = detail.title;
+          label.textContent = detail.title.replace(ExicanRules.pollDateLabel(match), ExicanRules.displayDate(match.match_date));
           sub.textContent = detail.sub;
           main.append(label, sub);
           const end = document.createElement("div");
@@ -266,7 +266,7 @@
           main.className = "row-main";
           const label = document.createElement("span");
           label.className = "row-label";
-          label.textContent = detail.title;
+          label.textContent = detail.title.replace(ExicanRules.pollDateLabel(match), ExicanRules.displayDate(match.match_date));
           const sub = document.createElement("span");
           sub.className = "row-sub";
           sub.textContent = detail.sub + (Number.isFinite(match.score_us) && Number.isFinite(match.score_them) ? "" : " · 스코어 미입력");
@@ -323,7 +323,7 @@
         badges.className = "candidate-badges";
         badges.appendChild(badge(row.menu_name));
         if (row.head_name) badges.appendChild(badge(row.head_name));
-        badges.appendChild(badge(api.describeSchedule(row)));
+        badges.appendChild(badge(row.parsed_date ? api.describeSchedule(row).replace(/^\d+\/\d+\(.\)/, ExicanRules.displayDate(row.parsed_date)) : api.describeSchedule(row)));
         for (const format of (row.parsed_format || "").split(",").filter(Boolean)) badges.appendChild(badge(format));
         if (row.is_closed) badges.appendChild(badge("마감", "closed"));
         if (!row.parse_ok) badges.appendChild(badge("미분류", "unparsed"));

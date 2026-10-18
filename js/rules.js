@@ -31,21 +31,26 @@
 
   function pollTitle(poll) {
     if (poll.title) return poll.title;
-    const [, month, day] = poll.match_date.split("-").map(Number);
-    const weekday = "일월화수목금토"[new Date(`${poll.match_date}T00:00:00Z`).getUTCDay()];
-    return `${month}/${day}(${weekday}) 경기`;
+    return `${pollDateLabel(poll)} 경기`;
+  }
+
+  function dateWeekday(dateStr) {
+    return "일월화수목금토"[new Date(`${dateStr}T00:00:00Z`).getUTCDay()];
+  }
+
+  function displayDate(dateStr, { weekday = true } = {}) {
+    const [, month, day] = dateStr.split("-").map(Number);
+    return `${month}/${day}${weekday ? " " + dateWeekday(dateStr) : ""}`;
   }
 
   // "10/24(토)" — 제목이 있어도 날짜가 먼저 보이도록 쓰는 짧은 날짜 라벨.
   function pollDateLabel(poll) {
-    const [, month, day] = poll.match_date.split("-").map(Number);
-    const weekday = "일월화수목금토"[new Date(`${poll.match_date}T00:00:00Z`).getUTCDay()];
-    return `${month}/${day}(${weekday})`;
+    return `${displayDate(poll.match_date, { weekday: false })}(${dateWeekday(poll.match_date)})`;
   }
 
-  // 보드·카드 제목: 날짜 + 제목(없으면 "경기"). 예: "10/24(토) 정기 풋살", "10/24(토) 경기".
+  // 보드·카드 제목: 날짜 + 제목(없으면 "경기"). 예: "10/24 토 정기 풋살".
   function pollHeading(poll) {
-    return `${pollDateLabel(poll)} ${poll.title || "경기"}`;
+    return `${displayDate(poll.match_date)} ${poll.title || "경기"}`;
   }
 
   // 정기 투표 = 토요일 경기. 제목은 붙여도 되며 분류에 영향을 주지 않는다.
@@ -110,10 +115,10 @@
     return `${Math.floor(seconds / size)}${unit} ${delta < 0 ? "후" : "전"}`;
   }
 
-  // "10월 24일 토요일" — 투표 제목("10/24(토)")보다 한 단계 자세한 경기 날짜.
+  // "10월 24일 토요일" — 경기 일시 줄에서만 쓰는 자세한 날짜.
   function longDate(dateStr) {
     const [, month, day] = dateStr.split("-").map(Number);
-    const weekday = "일월화수목금토"[new Date(`${dateStr}T00:00:00Z`).getUTCDay()];
+    const weekday = dateWeekday(dateStr);
     return `${month}월 ${day}일 ${weekday}요일`;
   }
 
@@ -148,7 +153,7 @@
     return Math.round((Date.parse(`${kstDate(targetIso)}T00:00:00Z`) - Date.parse(`${kstDate(nowIso)}T00:00:00Z`)) / DAY);
   }
 
-  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine, deleteSummary, daysUntil, pollDateLabel, pollHeading };
+  const rules = { kstDate, nextSaturday, pollWindow, pollStatus, pollTitle, isSpecialPoll, attendanceSummary, lateVoteRows, monthlyDuesRows, formatRelative, longDate, matchForPoll, pollMatchLine, deleteSummary, daysUntil, pollDateLabel, pollHeading, displayDate };
   if (typeof window !== "undefined") window.ExicanRules = rules;
   if (typeof module !== "undefined" && module.exports) module.exports = rules;
 })();
