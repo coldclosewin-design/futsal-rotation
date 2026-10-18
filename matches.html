@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>매칭 · FC EXICAN</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018d">
+  <link rel="stylesheet" href="styles.css?v=20261019a">
 </head>
 <body class="rollout-page">
   <h1>매칭</h1>
@@ -46,6 +46,7 @@
   <script src="js/ui.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/rules.js"></script>
+  <script src="js/polls.js"></script>
   <script src="js/member.js"></script>
   <script src="js/data.js"></script>
   <script src="js/attendance-rules.js"></script>
@@ -71,6 +72,7 @@
       let members = [];
       let reactions = [];
       let poll = null;
+      let polls = [];
       let attendCount = null;
       let member = null;
       let role = "anon";
@@ -543,7 +545,8 @@
             await requireAdmin();
             if (!savedMatch) {
               const fields = Object.fromEntries(Array.from(new FormData(form).entries()));
-              const match = api.buildMatchRow(row, fields, { presidentId: members.find((person) => person.is_president)?.id, poll });
+              const match = api.buildMatchRow(row, fields, { presidentId: members.find((person) => person.is_president)?.id,
+                poll: ExicanPolls.pollForDate(polls, fields.match_date) });
               const existing = demo ? knownMatches : await ExicanData.matches({ from: match.match_date });
               savedMatch = existing.find((item) => item.candidate_article_id === row.article_id && item.match_date === match.match_date && item.start_time.slice(0, 5) === match.start_time);
               if (!savedMatch && existing.some((item) => item.match_date === match.match_date && item.start_time.slice(0, 5) === match.start_time)) throw new Error("같은 날짜·시각에 등록된 매치가 있습니다. 날짜와 시각을 확인하세요");
@@ -577,9 +580,9 @@
         rows = [];
         renderCards();
         try {
-          const [dated, roster, current, matches, undated, history] = await Promise.all([
+          const [dated, roster, upcoming, matches, undated, history] = await Promise.all([
             ExicanData.candidates({ from: demo ? undefined : today(), includeClosed: true }),
-            ExicanData.members(), ExicanData.currentPoll(), ExicanData.matches({ from: demo ? undefined : today() }),
+            ExicanData.members(), ExicanData.upcomingPolls(), ExicanData.matches({ from: demo ? undefined : today() }),
             // from 필터는 NULL 날짜를 제외하므로 기존 API로 미분류 날짜 없는 글을 보충한다.
             demo ? Promise.resolve([]) : ExicanData.candidates({ includeClosed: true,
               seenSince: new Date(Date.now() - EXICAN_CONFIG.CANDIDATE_STALE_HOURS * 3600000).toISOString() }),
@@ -594,6 +597,7 @@
           ]);
           const candidates = demo ? api.shiftDemoDates(dated, today()) : [...new Map(
             dated.concat(undated.filter((row) => !row.parse_ok && !row.parsed_date)).map((row) => [row.article_id, row])).values()];
+          const current = upcoming[0] || null;
           const [votes, receivedReactions] = await Promise.all([
             current ? ExicanData.votes(current.id) : Promise.resolve([]),
             ExicanData.reactions(candidates.map((row) => row.article_id))
@@ -612,6 +616,7 @@
             }
           }
           members = roster;
+          polls = upcoming;
           poll = current;
           attendCount = poll ? ExicanRules.attendanceSummary(votes, members).count : null;
           knownMatches = demo ? api.shiftDemoDates(matches, today()) : matches;
@@ -645,7 +650,7 @@
               if (modal) modal.close();
               if (role === "anon") {
                 version += 1;
-                rows = []; members = []; member = null; reactions = [];
+                rows = []; members = []; member = null; reactions = []; polls = []; poll = null;
                 knownMatches = [];
                 historyRows = [];
                 historyExpanded = false;

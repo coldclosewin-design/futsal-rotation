@@ -93,7 +93,11 @@ function renderNav(activeKey) {
   document.body.append(tabbar, sheet);
 }
 
-function showToast(msg) {
+function toastDuration(msg, ms) {
+  return ms === undefined ? Math.max(1800, msg.length * 45) : ms;
+}
+
+function showToast(msg, ms) {
   let toast = document.getElementById("toast");
   if (!toast) {
     toast = document.createElement("div");
@@ -106,7 +110,7 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), toastDuration(msg, ms));
 }
 
 function escapeHtml(str) {
@@ -119,5 +123,5 @@ function formatWon(n) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { renderNav, showToast, escapeHtml, formatWon, icon, NAV_ITEMS };
+  module.exports = { renderNav, showToast, toastDuration, escapeHtml, formatWon, icon, NAV_ITEMS };
 }

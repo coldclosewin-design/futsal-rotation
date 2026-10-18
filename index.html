@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FC EXICAN 운영 허브</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="styles.css?v=20261018d">
+  <link rel="stylesheet" href="styles.css?v=20261019a">
 </head>
 <body class="home-page">
   <h1>FC EXICAN 운영 허브</h1>
@@ -34,6 +34,7 @@
         <h2 id="home-poll-title">이번 주 투표</h2>
         <p class="home-number"><span id="home-poll-count">—</span><small>명 참석</small></p>
         <p id="weekly-poll-summary" class="home-meta" aria-live="polite">투표를 불러오는 중입니다…</p>
+        <p id="home-my-vote" class="home-meta" hidden></p>
         <div class="home-actions">
           <a id="weekly-poll-link" class="button primary" href="vote.html">투표하기</a>
           <button id="share-vote" class="home-share" type="button" disabled>링크 복사</button>
@@ -89,6 +90,7 @@
         if (demo) url.searchParams.set("demo", "1");
         return url.href;
       };
+      const pollUrl = (id) => pageUrl(id ? `vote.html?poll=${encodeURIComponent(id)}` : "vote.html");
       if (demo) {
         document.querySelectorAll("a[href$='.html']").forEach((link) => { link.search = "?demo=1"; });
       }
@@ -128,7 +130,10 @@
         pollState = "signed-out"; matchState = "signed-out";
         for (const id of ["weekly-poll-summary", "home-candidates", "home-match", "ledger-summary"]) get(id).textContent = message;
         for (const id of ["home-poll-count", "home-balance"]) get(id).textContent = "—";
-        for (const id of ["ledger-my-summary", "home-special-polls"]) { get(id).textContent = ""; get(id).hidden = true; }
+        for (const id of ["ledger-my-summary", "home-special-polls", "home-my-vote"]) { get(id).textContent = ""; get(id).hidden = true; }
+        get("weekly-poll-link").href = pollUrl();
+        get("weekly-poll-link").textContent = "투표하기";
+        get("home-special-polls").href = pollUrl();
         get("home-member-summary").textContent = "팀 로그인 후 내 기록을 확인하세요.";
         get("ledger-summary").classList.remove("lit-dot");
         get("home-member-link").href = pageUrl("member.html");
@@ -154,7 +159,7 @@
           // 정기(토요일) 투표가 없으면 가장 가까운 투표를 카드에 보여준다
           const regular = upcoming.find((row) => !ExicanRules.isSpecialPoll(row)) || upcoming[0] || null;
           const [votes, members] = await Promise.all([regular ? ExicanData.votes(regular.id) : [], membersRequest]);
-          return { poll: upcoming[0] || null, weeklyPoll: regular, upcoming,
+          return { poll: upcoming[0] || null, weeklyPoll: regular, upcoming, votes,
             summary: regular ? ExicanRules.attendanceSummary(votes, members) : null };
         });
         const results = await Promise.allSettled([
@@ -171,6 +176,15 @@
         weeklyPoll = ballot.status === "fulfilled" ? ballot.value.weeklyPoll : null;
         pollSummary = ballot.status === "fulfilled" ? ballot.value.summary : null;
         get("home-poll-title").textContent = weeklyPoll ? ExicanRules.pollHeading(weeklyPoll) + " 투표" : "이번 주 투표";
+        const weeklyStatus = weeklyPoll ? ExicanRules.pollStatus(weeklyPoll, new Date().toISOString()) : null;
+        get("weekly-poll-link").href = pollUrl(weeklyPoll?.id);
+        get("weekly-poll-link").textContent = ["closed", "cancelled"].includes(weeklyStatus) ? "현황 보기" : "투표하기";
+        const myVote = get("home-my-vote");
+        const myId = ExicanMember.getId();
+        const savedVote = ballot.status === "fulfilled" ? ballot.value.votes.find((vote) => vote.member_id === myId) : null;
+        myVote.hidden = !weeklyPoll || !myId || (!savedVote && weeklyStatus !== "open");
+        myVote.textContent = myVote.hidden ? "" : savedVote ?
+          `내 투표: ${savedVote.choice === "attend" ? "참석" : "불참"} · ${ExicanRules.formatRelative(savedVote.updated_at, new Date().toISOString())}` : "아직 투표하지 않았습니다";
         if (weeklyPoll) {
           const deadline = new Date(weeklyPoll.closes_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
           const status = { scheduled: "예정", open: "진행 중", closed: "마감됨", cancelled: "취소됨" }[ExicanRules.pollStatus(weeklyPoll, new Date().toISOString())];
@@ -187,6 +201,7 @@
         specialLink.hidden = upcoming.length < 2 || !specials.length;
         const specialTitle = specials.length ? specials[0].title ? `${specials[0].match_date.slice(5).split("-").map(Number).join("/")} ${specials[0].title}` : ExicanRules.pollTitle(specials[0]) : "";
         specialLink.textContent = specials.length ? `특별 투표 ${specials.length}개 · ${specialTitle}` : "";
+        specialLink.href = pollUrl(specials[0]?.id);
 
         const candidateCard = get("home-candidates");
         candidateCard.textContent = "";
@@ -271,7 +286,7 @@
           prompt("복사가 지원되지 않습니다. 아래 문구를 복사해 주세요:", text);
         }
       }
-      get("share-vote").onclick = () => copyShare(ExicanShare.buildVoteShare(weeklyPoll, pollSummary, pageUrl("vote.html")));
+      get("share-vote").onclick = () => copyShare(ExicanShare.buildVoteShare(weeklyPoll, pollSummary, pollUrl(weeklyPoll?.id)));
       get("share-candidates").onclick = () => copyShare(ExicanShare.buildCandidateShare(ranked, pageUrl("matches.html")));
       get("home-retry").onclick = () => loadHome().catch((error) => showToast(error.message));
       try {

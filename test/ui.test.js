@@ -1,6 +1,21 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
-const { escapeHtml, formatWon } = require("../js/ui.js");
+const { escapeHtml, formatWon, toastDuration } = require("../js/ui.js");
+
+describe("toastDuration", () => {
+  test("짧은 문구는 1.8초, 긴 오류는 글자당 45ms 표시한다", () => {
+    assert.equal(toastDuration("저장했습니다"), 1800);
+    assert.equal(toastDuration(""), 1800);
+    assert.equal(toastDuration("가".repeat(40)), 1800);
+    assert.equal(toastDuration("가".repeat(41)), 1845);
+    assert.equal(toastDuration("가".repeat(60)), 2700);
+  });
+  test("명시한 표시 시간은 기본값보다 짧아도 그대로 쓴다", () => {
+    assert.equal(toastDuration("가".repeat(60), 1000), 1000);
+    assert.equal(toastDuration("저장했습니다", 5000), 5000);
+    assert.equal(toastDuration("저장했습니다", 0), 0);
+  });
+});
 
 describe("escapeHtml", () => {
   test("HTML 태그와 속성의 특수 문자를 이스케이프한다", () => {

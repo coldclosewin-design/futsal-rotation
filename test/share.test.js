@@ -7,6 +7,11 @@ const poll = Object.freeze({ match_date: "2026-10-17", closes_at: "2026-10-12T13
 const page = "https://example.invalid/futsal/vote.html?demo=1";
 
 describe("buildVoteShare", () => {
+  test("특정 투표 id와 데모 파라미터가 붙은 URL을 그대로 공유한다", () => {
+    for (const url of ["https://example.invalid/vote.html?poll=demo-poll-1", "https://example.invalid/vote.html?poll=demo-poll-special&demo=1"]) {
+      assert.equal(buildVoteShare(poll, { count: 6 }, url), buildVoteShare(poll, { count: 6 }, page).replace(page, url));
+    }
+  });
   test("날짜·마감·참석 수·링크를 지정된 문구로 반환", () => {
     assert.equal(buildVoteShare(poll, { count: 6 }, page), `[${config.TEAM_NAME}] 10/17(토) 경기 참석 투표\n마감: 10/12(월) 13:00\n현재 참석 6명\n👉 ${page}`);
   });

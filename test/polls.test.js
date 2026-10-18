@@ -5,11 +5,40 @@ const { join } = require("node:path");
 const { runInNewContext } = require("node:vm");
 const rules = require("../js/rules.js");
 const form = require("../js/poll-form.js");
+const { selectPoll, pollForDate } = require("../js/polls.js");
+const { buildMatchRow } = require("../js/candidates.js");
 const fixture = require("./fixtures/demo-data.json");
 const source = readFileSync(join(__dirname, "../js/data.js"), "utf8");
 const now = "2026-10-15T12:00:00+09:00";
 // vm 컨텍스트에서 만든 객체는 prototype이 달라 deepEqual이 실패하므로 JSON 왕복으로 비교한다.
 const plain = (value) => JSON.parse(JSON.stringify(value));
+
+test("투표 링크·전환의 id를 우선하고 없으면 진행 중 → 첫 투표 → null 순서로 선택한다", () => {
+  const closed = Object.freeze({ id: "closed", opens_at: "2026-10-01T00:00:00Z", closes_at: "2026-10-02T00:00:00Z" });
+  const open = Object.freeze({ id: "open", opens_at: "2026-10-01T00:00:00Z", closes_at: "2026-10-30T00:00:00Z" });
+  const special = Object.freeze({ ...open, id: "special", title: "특별 경기" });
+  const polls = Object.freeze([closed, open, special]);
+  assert.equal(selectPoll(polls, "special", now), special);
+  assert.equal(selectPoll(polls, "closed", now), closed);
+  assert.equal(selectPoll(polls, "deleted", now), open);
+  assert.equal(selectPoll(polls, undefined, now), open);
+  assert.equal(selectPoll([closed], "deleted", now), closed);
+  assert.equal(selectPoll([], "deleted", now), null);
+});
+
+test("앞선 특별 투표가 있어도 매치 날짜의 정기 투표를 연결하고 날짜 불일치면 null이다", () => {
+  const special = Object.freeze({ id: "demo-poll-special", match_date: "2026-10-21" });
+  const regular = Object.freeze({ id: "demo-poll-1", match_date: "2026-10-24" });
+  const polls = Object.freeze([special, regular]);
+  const fields = { match_date: regular.match_date, start_time: "06:00", end_time: "08:00", venue: "테스트 구장", cost: "60000", format: "6v6" };
+  const create = (list) => buildMatchRow({ article_id: 1 }, fields, { presidentId: "m03", poll: pollForDate(list, fields.match_date) });
+  assert.equal(pollForDate(polls, regular.match_date), regular);
+  assert.equal(pollForDate(polls, special.match_date), special);
+  assert.equal(create(polls).poll_id, regular.id);
+  assert.equal(create([special]).poll_id, null);
+  assert.equal(pollForDate([], regular.match_date), null);
+  assert.equal(pollForDate(polls, undefined), null);
+});
 
 function environment({ clock = now, live = false, role = "admin", respond = () => ({ data: [] }) } = {}) {
   const calls = [];
