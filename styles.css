@@ -742,3 +742,6 @@ tbody th { font-weight: 600; }
 .operations-table thead th { vertical-align: middle; }
 .operations-table th:last-child, .operations-table td:last-child { width: 100%; }
 .rollout-page .column-manager .row-action { min-height: 36px; padding: 6px 12px; background: var(--panel-solid); border: var(--hair); color: var(--ink); }
+
+/* 021: 매칭 보드 마지막 수집 꼬리표 */
+.page-board .segment b small { margin-left: 4px; font-size: var(--fs-label); font-weight: 600; color: var(--board-muted); letter-spacing: 0; }
